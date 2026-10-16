@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>PhoneCam · Camera</title>
+<title>CamTether · Camera</title>
 <style>
 :root{color-scheme:dark;font:16px system-ui;background:#10171b;color:#eaf1ed}body{max-width:600px;margin:0 auto;padding:24px}h1{font-size:34px;margin-bottom:8px}p{color:#b8c9c1;line-height:1.55}video{width:100%;max-height:52vh;background:#060a0c;border-radius:16px;object-fit:contain}button,select{font:inherit;border:0;border-radius:10px;padding:14px;margin:6px 6px 6px 0}button{background:#9be9b5;color:#10241a;font-weight:650}button:disabled{opacity:.45}select,#stop{background:#29383d;color:white}#status{padding:16px 0;min-height:48px}small{display:block;color:#93a79e;line-height:1.6}.tag{font:12px monospace;letter-spacing:2px;color:#9be9b5}
 </style>
-<div class="tag">PHONECAM / LOCAL CONNECTION</div><h1>Your phone. Your webcam.</h1>
+<div class="tag">CAMTETHER / LOCAL CONNECTION</div><h1>Your phone. Your webcam.</h1>
 <p>Keep this page open and the screen unlocked. Video goes to your laptop on the local network.</p>
 <video id="preview" autoplay muted playsinline></video>
 <div><select id="facing" aria-label="Camera"><option value="environment">Rear camera</option><option value="user">Front camera</option></select><select id="quality" aria-label="Video quality"><option value="fast">Lower latency · 540p</option><option value="sharp" selected>Sharper · 720p</option></select></div>
 <button id="start">Start camera</button><button id="stop" disabled>Stop</button>
 <div id="status" role="status" aria-live="polite">Ready to connect.</div>
-<small>In Zoom, Teams, or Meet, select <b>OBS Virtual Camera</b>. Use your laptop microphone. No video is recorded by PhoneCam.</small>
+<small>In Zoom, Teams, or Meet, select <b>OBS Virtual Camera</b>. Use your laptop microphone. No video is recorded by CamTether.</small>
 <script>
 const token=new URLSearchParams(location.hash.slice(1)).get('token');
 const wired=location.hostname==='127.0.0.1';
@@ -25,7 +25,7 @@ try{
 }catch{}
 let captureWidth=960,captureHeight=540,jpegQuality=.65;
 let stream=null,running=false,generation=0,wake=null,pendingUpload=null;
-const headers={'X-PhoneCam-Token':token||''};
+const headers={'X-CamTether-Token':token||''};
 function tell(s){status.textContent=s}
 async function stopCamera(message='Camera stopped.'){
  running=false;generation++;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;
@@ -107,7 +107,7 @@ start.onclick=startCamera;
 stop.onclick=()=>stopCamera();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stopCamera('Camera paused because this page was hidden. Tap Start camera to resume.')});
 window.addEventListener('pagehide',()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
-if(!token){start.disabled=true;tell('Scan the QR code shown in the PhoneCam laptop app to pair.')}
+if(!token){start.disabled=true;tell('Scan the QR code shown in the CamTether laptop app to pair.')}
 // Only an explicit PC launch link requests auto-start; ordinary page opens do not.
 let pcStartPending=token&&new URLSearchParams(location.search).get('start')==='1';
 function startFromPC(){

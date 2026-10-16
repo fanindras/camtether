@@ -32,10 +32,11 @@ def correct_perspective(image,vertical=0.,horizontal=0.,level=0.):
     return image.transform((w,h),Image.Transform.PERSPECTIVE,coeff,Image.Resampling.BILINEAR)
 
 class Effects:
-    def __init__(self, root, output_size=(1280,720)):
+    def __init__(self, root, output_size=(1280,720), storage=None):
         self.output_size=output_size
         self.root=Path(root)
-        self.storage=self.root/'.local';self.storage.mkdir(exist_ok=True)
+        self.storage=Path(storage) if storage is not None else self.root/'.local'
+        self.storage.mkdir(parents=True,exist_ok=True)
         self.config=self.storage/'edits.json'
         self.settings=DEFAULTS.copy()
         try:

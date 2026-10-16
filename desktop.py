@@ -1,4 +1,4 @@
-"""PhoneCam Windows editing interface."""
+"""CamTether Windows editing interface."""
 import os,time,queue,threading
 import tkinter as tk
 from tkinter import ttk,filedialog,colorchooser,messagebox
@@ -7,14 +7,14 @@ from effects import DEFAULTS
 
 def show(bridge,port,ips,usb,root,adb_command):
     fx=bridge.effects
-    window=tk.Tk();window.title('PhoneCam · USB camera & editor')
+    window=tk.Tk();window.title('CamTether · USB camera & editor')
     window.geometry('1190x800');window.minsize(980,700);window.configure(bg='#10171b')
     style=ttk.Style(window);style.theme_use('clam')
     style.configure('TFrame',background='#10171b');style.configure('TLabel',background='#10171b',foreground='#eaf1ed',font=('Segoe UI',10))
     style.configure('TNotebook',background='#10171b');style.configure('TNotebook.Tab',padding=(12,9))
     style.configure('TButton',padding=(10,7));style.configure('TCheckbutton',background='#10171b',foreground='#eaf1ed')
     header=ttk.Frame(window,padding=(22,18));header.pack(fill='x')
-    ttk.Label(header,text='PHONECAM',font=('Segoe UI',20,'bold')).pack(side='left')
+    ttk.Label(header,text='CAMTETHER',font=('Segoe UI',20,'bold')).pack(side='left')
     ttk.Label(header,text='USB camera · Edit your video here',foreground='#9be9b5').pack(side='left',padx=20)
     body=ttk.Frame(window,padding=(20,0));body.pack(fill='both',expand=True)
     right=ttk.Frame(body,width=350);right.pack(side='right',fill='y',padx=(16,0));right.pack_propagate(False)
@@ -99,7 +99,7 @@ def show(bridge,port,ips,usb,root,adb_command):
         if color:changed('color',color);mode.set('Remove / plain color');changed('background',mode.get())
     ttk.Button(bg,text='Choose plain color…',command=choose_color).pack(fill='x',pady=8)
     slider(bg,'blur','Blur strength',4,36);slider(bg,'edge','Foreground cutoff',.25,.75)
-    ttk.Label(bg,text='Saved automatically. Your chosen image is copied into PhoneCam, so it is remembered even if the original file moves.\n\nRemoval uses a local model. Hair and fast movement may show imperfect edges. Webcam output uses an opaque background.',wraplength=300).pack(anchor='w',pady=12)
+    ttk.Label(bg,text='Saved automatically. Your chosen image is copied into CamTether, so it is remembered even if the original file moves.\n\nRemoval uses a local model. Hair and fast movement may show imperfect edges. Webcam output uses an opaque background.',wraplength=300).pack(anchor='w',pady=12)
     refresh_thumb()
     connect=tabs['Connect'];address=tk.StringVar(value=ips[0]);link=tk.StringVar()
     ttk.Label(connect,text='Direct USB' if usb else 'Network connection',font=('Segoe UI',13,'bold')).pack(anchor='w')
@@ -141,7 +141,7 @@ def show(bridge,port,ips,usb,root,adb_command):
     ttk.Button(connect,text='Disconnect / new pairing',command=disconnect).pack(fill='x',pady=5)
     footer=ttk.Frame(window,padding=(20,14));footer.pack(fill='x')
     driver=ttk.Label(footer,text='',wraplength=760);driver.pack(side='left')
-    ttk.Button(footer,text='Set up webcam driver',command=lambda:os.startfile(str(root/'Setup Webcam Driver.cmd'))).pack(side='right')
+    ttk.Button(footer,text='Set up webcam driver',command=lambda:__import__('webbrowser').open('https://obsproject.com/download')).pack(side='right')
     ttk.Label(window,text='Edits and background are remembered automatically. Video stays on this laptop.',foreground='#93a79e').pack(pady=(0,10))
     previous=[None];ticks=[0];last_preview=[0.]
     def tick():

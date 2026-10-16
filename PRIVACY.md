@@ -1,12 +1,18 @@
-# Privacy
+# CamTether privacy
 
-PhoneCam does not record video or upload it to a cloud service. Live frames are
-processed in RAM and passed to the local virtual-camera consumer. That consumer
-(e.g. conferencing software or OBS) has its own recording and transmission policy.
-Background images and edit settings are saved locally in .local/. Camera choice
-and quality are saved in phone-browser local storage. Pairing tokens authorize
-camera requests and must not be shared. USB debugging gives the authorized laptop
-Android debugging access. The app does not bypass the phone lock or permissions.
-Optional non-USB mode uses the local network. GitHub and Microsoft Store have their
-own account, download and telemetry policies. Never upload .local/, device state,
-logs, certificates, user backgrounds or personal camera screenshots to this repo.
+CamTether processes live video locally in memory and does not record it or send
+it to a cloud service. The receiving app (OBS, Teams, Meet, Zoom or another app)
+may record or transmit video under its own settings and privacy policy.
+
+Edit settings and the selected background image are saved in the current user's
+local CamTether data directory. Camera choice and quality remain in the phone's
+browser local storage. No analytics or advertising is built into CamTether.
+Pairing tokens authorize local camera uploads; do not share them. USB debugging
+authorizes the laptop to issue Android debugging commands. The app uses ADB for
+USB port forwarding, waking the screen, and opening the browser, not bypassing
+phone security. Optional non-USB mode sends video over the local network.
+
+Opening the OBS download link visits obsproject.com. Microsoft Store, GitHub,
+Android, the browser, and other third-party software have their own policies.
+Use https://github.com/fanindras/camtether/issues for questions; do not post private
+images, tokens, device identifiers or logs containing personal data publicly.

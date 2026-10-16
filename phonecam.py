@@ -14,6 +14,8 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from app_paths import user_data_dir
+
 WIDTH, HEIGHT, FPS = 1280, 720, 30
 Image.MAX_IMAGE_PIXELS = 4_000_000
 
@@ -47,7 +49,7 @@ def local_ips():
         pass
     ips = list(dict.fromkeys(ip for ip in ips if not ip.startswith('127.'))) or ['127.0.0.1']
     try:
-        preferred = json.loads((ROOT/'preferences.json').read_text()).get('preferred_ip')
+        preferred = json.loads((user_data_dir()/'preferences.json').read_text()).get('preferred_ip')
         if preferred in ips:
             ips.remove(preferred); ips.insert(0, preferred)
     except (OSError, ValueError):
@@ -55,10 +57,10 @@ def local_ips():
     return list(dict.fromkeys(usb_ips + ips))
 
 def certificate(ips):
-    folder = ROOT / '.local'
+    folder = user_data_dir()
     folder.mkdir(exist_ok=True)
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'PhoneCam local camera')])
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'CamTether local camera')])
     now = datetime.datetime.now(datetime.timezone.utc)
     cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
             .serial_number(x509.random_serial_number()).not_valid_before(now-datetime.timedelta(minutes=5))
@@ -160,7 +162,7 @@ def make_server(bridge, port, ips, usb=False):
             if body: self.wfile.write(body)
 
         def authorized(self):
-            supplied = self.headers.get('X-PhoneCam-Token', '')
+            supplied = self.headers.get('X-CamTether-Token', '')
             return bool(supplied) and hmac.compare_digest(supplied, bridge.token)
 
         def do_GET(self):
@@ -192,7 +194,7 @@ def make_server(bridge, port, ips, usb=False):
                 data = self.rfile.read(size)
                 if len(data) != size or self.headers.get('Content-Type') != 'image/jpeg':
                     self.reply(400); return
-                accepted = bridge.accept(data, self.headers.get('X-PhoneCam-Token', ''))
+                accepted = bridge.accept(data, self.headers.get('X-CamTether-Token', ''))
                 self.reply(204 if accepted else 403)
             except (ValueError, OSError, Image.DecompressionBombError):
                 self.reply(400)
@@ -245,15 +247,17 @@ def main():
     args = parser.parse_args()
     ips, bridge = (['127.0.0.1'] if args.usb else local_ips()), Bridge()
     from effects import Effects
-    bridge.effects = Effects(ROOT)
+    bridge.effects = Effects(ROOT, storage=user_data_dir())
     threading.Thread(target=bridge.effects.run,args=(bridge,),daemon=True).start()
     server = make_server(bridge, args.port, ips, usb=args.usb)
     if args.usb:
         try:
             adb_command('reverse', f'tcp:{server.server_port}', f'tcp:{server.server_port}')
         except Exception:
-            server.server_close()
-            raise
+            if args.headless:
+                server.server_close()
+                raise
+            bridge.driver_status = 'Connect your phone, then click Wake phone & start camera.'
     threading.Thread(target=server.serve_forever, daemon=True).start()
     threading.Thread(target=bridge.virtual_camera, daemon=True).start()
     if args.state_file:
@@ -275,7 +279,7 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        (ROOT/'error.log').write_text(f'{type(error).__name__}: {error}\n', encoding='utf-8')
+        (user_data_dir()/'error.log').write_text(f'{type(error).__name__}: {error}\n', encoding='utf-8')
         if '--headless' in sys.argv: raise
         import tkinter.messagebox
-        tkinter.messagebox.showerror('PhoneCam could not start', str(error)+'\n\nClose any other PhoneCam window and try again. Details: error.log')
+        tkinter.messagebox.showerror('CamTether could not start', str(error)+'\n\nClose any other CamTether window and try again. Details: error.log')

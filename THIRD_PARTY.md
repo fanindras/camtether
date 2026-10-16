@@ -1,16 +1,28 @@
-# Dependencies and binary release gate
+# Third-party components
 
-This repository contains original source only, not vendored libraries, Python,
-ADB, model weights, user backgrounds, screenshots or installers.
+Original CamTether files are MIT licensed. The assembled runtime is not MIT-only.
+All bundled upstream license files must remain in the package.
 
-pyvirtualcam 0.15.0 declares GPLv2; see https://github.com/letmaik/pyvirtualcam.
-A combined binary release must meet applicable GPL source and notice obligations.
-The MIT license applies only to original PhoneCam files. Do not label the entire
-bundled installer MIT-only. Audit the exact license and provenance of every
-runtime, library, model and tool before binary publication, including compatibility
-between the GPL component and the HumanSeg model and any SDK distribution terms.
+- Python 3.13: PSF license, runtime/LICENSE.txt; https://www.python.org/downloads/source/
+- pyvirtualcam 0.15.0: GPLv2; https://github.com/letmaik/pyvirtualcam/tree/v0.15.0
+- NumPy 2.5.4: upstream BSD notices and bundled library notices in its distribution.
+- Pillow 12.3.0: upstream HPND/Pillow notices and bundled library notices.
+- ONNX Runtime 1.31.0: MIT and bundled third-party notices.
+- cryptography 50.0.2 and its dependencies: retain the upstream Apache/BSD and bundled notices.
+- qrcode 8.2: BSD distribution notices.
+- Android Platform Tools: retain Google's NOTICE.txt and source.properties. The
+  release gate includes confirming SDK redistribution terms for the exact payload.
+- PP-HumanSeg model: OpenCV Zoo, Apache-2.0 notice by PaddlePaddle Authors;
+  https://github.com/opencv/opencv_zoo/tree/main/models/human_segmentation_pphumanseg
+  Filename human_segmentation_pphumanseg_2023mar.onnx, 6,163,938 bytes.
+  SHA256 552d8a984054e59b5d773d24b9b12022b22046ceb2bbc4c9aaeaceb36a9ddf24.
+  The local weights match the upstream Git LFS pointer, checked 2026-10-17.
 
-Pinned dependencies are in requirements.txt. Their upstream packages supply
-license files. The existing local HumanSeg license says Apache-2.0; model provenance
-and compatibility have not been established for public redistribution, so the
-weights are excluded. Obtain ADB separately from Google for developer use.
+## Before binary publication
+
+Fulfill corresponding-source and notice obligations for the exact GPL components
+and their bundled code, and review compatibility of the combined distribution,
+including the Apache-licensed components. Source references above do not by
+themselves constitute a complete corresponding-source delivery. The public
+repository contains only original source; the candidate MSIX remains local until
+these distribution checks and Store certification are complete.
