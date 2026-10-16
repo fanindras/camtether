@@ -41,3 +41,13 @@ on the other laptop with Smart App Control enabled is still an acceptance check
 for after Microsoft provides a signed distribution. No security settings changed.
 Microsoft must approve runFullTrust and final certification. This local overall
 PASS is not Microsoft Store approval. Publication remains manually controlled.
+
+## Store draft update
+
+Version 1.1.2.0 uploaded and marked Validated in submission 1152921505702153933.
+The superseded 1.1.1 package is removed. The English listing has three saved
+screenshots and shows Complete. Age ratings show Complete. Pricing remains free
+in all available markets; publication remains manual. Customer-facing OBS version
+requirement and additional GPL license wording require the owner's approval of
+the exact text before those listing fields are changed. No final certification
+submission has been made.
