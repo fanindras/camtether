@@ -6,14 +6,16 @@ and the OBS Virtual Camera endpoint. Keep the phone browser visible and unlocked
 
 ## Release status
 
-Version 1.1.1.0 is an unsigned MSIX submission candidate, not a published Store app.
+Version 1.1.2.0 is an unsigned MSIX submission candidate, not a published Store app.
 The Microsoft Store name is reserved (9PLVZCDDDT9H). Do not disable Smart App Control
 or install a self-signed certificate. Microsoft signs accepted MSIX submissions.
 See [submission preparation](submission/README.md) for remaining release gates.
 
 ## Developer setup
 
-Windows x64, Python 3.13, and OBS Studio are required. Obtain Android SDK Platform
+Windows x64, Python 3.13, and OBS Studio 32.2.2 (64-bit) are required.
+The adapter currently supports its FFmpeg 8 libraries (swscale-9 / avutil-60);
+other ABI versions are rejected with an explicit message. Obtain Android SDK Platform
 Tools from https://developer.android.com/tools/releases/platform-tools and extract
 platform-tools into android-tools/. Install dependencies and launch:
 
@@ -53,8 +55,8 @@ are not downloaded silently by the build. See submission/VALIDATION.md.
 
 ## License and privacy
 
-Original source is MIT. Third-party components keep their own licenses, including
-GPLv2 for pyvirtualcam. Binary distribution must fulfill applicable obligations;
-the whole bundle is not MIT-only. See THIRD_PARTY.md and PRIVACY.md.
+Original files retain the MIT license. The OBS-derived adapter and the combined
+distribution are GPL-3.0-or-later. pyvirtualcam and cryptography are no longer
+bundled. See THIRD_PARTY.md, licenses/GPL-3.0.txt and PRIVACY.md.
 
 See [1.1.1 review and measurements](submission/REVIEW-1.1.1.md) for reconnect fixes and CPU tradeoffs.

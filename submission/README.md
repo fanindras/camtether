@@ -1,6 +1,6 @@
 # CamTether Store submission preparation
 
-Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.1.0 | Architecture: x64
+Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.2.0 | Architecture: x64
 Package identity and publisher are fixed in packaging/AppxManifest.xml.
 Minimum Windows version: Windows 10 build 19041.
 
@@ -14,7 +14,7 @@ PC. Settings and your chosen background are remembered locally. Video is process
 on your laptop. Background removal can show imperfect edges during fast motion.
 
 Requires Android USB debugging, Chrome camera permission and an unlocked phone
-with the camera page visible. Requires separately installed OBS Studio for the
+with the camera page visible. Requires separately installed OBS Studio 32.2.2 x64 (FFmpeg 8 runtime) for the
 OBS Virtual Camera component. Laptop microphone supplies audio; CamTether carries
 video only. This app is not affiliated with OBS, Google or Microsoft. Performance
 varies by hardware; 30 fps is a target, not a guarantee. Keystone correction is
@@ -34,7 +34,7 @@ change security policy, bypass phone locks or require administrator privileges.
 
 ## Reviewer test notes
 
-1. Install OBS Studio separately, leave OBS's virtual-camera producer stopped.
+1. Install OBS Studio 32.2.2 x64 separately, leave OBS's virtual-camera producer stopped.
 2. Connect an Android phone by USB, enable USB debugging and approve the PC.
 3. Launch CamTether, choose Wake phone & start camera, grant phone Chrome camera
    permission, and leave the phone unlocked and its page visible.
@@ -42,15 +42,13 @@ change security policy, bypass phone locks or require administrator privileges.
 5. Close and reopen CamTether; verify settings and background persistence.
 6. Stop the phone camera; output should clear. Test cable loss and recovery.
 
-## Outstanding before submission
+## Validation and remaining acceptance checks
 
-- Test the Store-installed package on Windows with Smart App Control enabled;
-  this cannot be claimed from unpacked-runtime tests or unsigned package creation.
-- Resolve WACK findings; installed test-package lifecycle passed. See STORE-CHECKS-1.1.1.md.
-- Resolve third-party binary redistribution / corresponding-source obligations.
-- Capture real product screenshots without personal camera content.
-- Owner completes age rating, markets/pricing, support declarations and any binding
-  submission declarations. No answers to those legal declarations are invented here.
+See STORE-CHECKS-1.1.2.md for the current test record. WACK overall PASS includes
+one disclosed optional blocked-executable finding. Age ratings are saved. Three
+actual product screenshots use a labeled synthetic chart rather than personal video.
+The package still needs Microsoft certification and runFullTrust approval. After
+Store signing, verify installation on the target laptop with Smart App Control
+enabled. Local unpacked/unsigned tests do not establish that outcome.
 
-The 1.1.1.0 package is uploaded and marked Validated in a private Store draft.
-It has not been submitted for certification. Automatic publication is on hold.
+Publication remains manually controlled. The package is not publicly released.

@@ -9,7 +9,7 @@ class BridgeTests(unittest.TestCase):
         cls.bridge=app.Bridge()
         cls.server=app.make_server(cls.bridge,0,['127.0.0.1'])
         threading.Thread(target=cls.server.serve_forever,daemon=True).start()
-        cls.base=f'https://127.0.0.1:{cls.server.server_port}'
+        cls.base=f'http://127.0.0.1:{cls.server.server_port}'
         cls.context=ssl._create_unverified_context()
         b=io.BytesIO();app.Image.new('RGB',(320,240),'red').save(b,format='JPEG');cls.jpeg=b.getvalue()
 
@@ -40,7 +40,7 @@ class BridgeTests(unittest.TestCase):
     def test_bad_and_oversized_frames(self):
         self.assertEqual(self.request('/frame',b'not jpeg')[0],400)
         # Server rejects an oversized declared body before accepting any bytes.
-        conn=http.client.HTTPSConnection('127.0.0.1',self.server.server_port,context=self.context,timeout=10)
+        conn=http.client.HTTPConnection('127.0.0.1',self.server.server_port,timeout=10)
         conn.putrequest('POST','/frame')
         conn.putheader('X-CamTether-Token',self.bridge.token)
         conn.putheader('Content-Length','1500001')

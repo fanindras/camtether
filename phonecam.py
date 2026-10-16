@@ -3,75 +3,18 @@ from pathlib import Path
 import sys
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'vendor'))
-import argparse, datetime, hmac, io, ipaddress, json, os, secrets, socket, ssl, subprocess, threading, time
+import argparse, hmac, io, json, os, secrets, socket, subprocess, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw
-import pyvirtualcam, qrcode
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from obs_camera import Camera
+import qrcode
 
 from app_paths import user_data_dir
 
 WIDTH, HEIGHT, FPS = 1280, 720, 30
 Image.MAX_IMAGE_PIXELS = 4_000_000
-
-def local_ips():
-    ips = []
-    usb_ips = []
-    if sys.platform == 'win32':
-        try:
-            command = "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and ($_.InterfaceDescription -match 'Remote NDIS|RNDIS|Internet Sharing|USB NCM' -or $_.PnPDeviceID -like 'USB\\VID_22D9*') } | ForEach-Object { Get-NetIPAddress -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty IPAddress"
-            result = subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',command], capture_output=True, text=True, timeout=12, creationflags=subprocess.CREATE_NO_WINDOW)
-            for value in result.stdout.splitlines():
-                value = value.strip()
-                try:
-                    ip = ipaddress.ip_address(value)
-                    if ip.version == 4 and not ip.is_link_local:
-                        usb_ips.append(value)
-                except ValueError:
-                    pass
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    try:
-        # UDP connect selects the route without transmitting application data.
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(('192.0.2.1', 80))
-            ips.append(s.getsockname()[0])
-    except OSError:
-        pass
-    try:
-        ips.extend(socket.gethostbyname_ex(socket.gethostname())[2])
-    except OSError:
-        pass
-    ips = list(dict.fromkeys(ip for ip in ips if not ip.startswith('127.'))) or ['127.0.0.1']
-    try:
-        preferred = json.loads((user_data_dir()/'preferences.json').read_text()).get('preferred_ip')
-        if preferred in ips:
-            ips.remove(preferred); ips.insert(0, preferred)
-    except (OSError, ValueError):
-        pass
-    return list(dict.fromkeys(usb_ips + ips))
-
-def certificate(ips):
-    folder = user_data_dir()
-    folder.mkdir(exist_ok=True)
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'CamTether local camera')])
-    now = datetime.datetime.now(datetime.timezone.utc)
-    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
-            .serial_number(x509.random_serial_number()).not_valid_before(now-datetime.timedelta(minutes=5))
-            .not_valid_after(now+datetime.timedelta(days=30))
-            .add_extension(x509.SubjectAlternativeName([x509.DNSName('localhost')]+[
-                x509.IPAddress(ipaddress.ip_address(ip)) for ip in set(ips+['127.0.0.1'])]), critical=False)
-            .sign(key, hashes.SHA256()))
-    keyfile, certfile = folder/'key.pem', folder/'cert.pem'
-    keyfile.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
-    certfile.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
-    return certfile, keyfile
 
 class Bridge:
     def __init__(self):
@@ -151,20 +94,22 @@ class Bridge:
         blank = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
         while not self.closed.is_set():
             try:
-                with pyvirtualcam.Camera(WIDTH, HEIGHT, FPS, backend='obs') as cam:
+                with Camera(WIDTH, HEIGHT, FPS) as cam:
                     self.driver_ready = True
                     self.driver_status = 'Ready · select OBS Virtual Camera in your meeting app'
                     while not self.closed.is_set():
                         frame = self.current()
                         cam.send(frame if frame is not None else blank)
                         cam.sleep_until_next_frame()
-            except Exception:
+            except Exception as error:
                 self.driver_ready = False
-                self.driver_status = 'Webcam driver unavailable. Install OBS Studio; keep its virtual camera stopped.'
+                self.driver_status = 'Webcam output unavailable: '+str(error)
                 self.closed.wait(3)
         self.driver_ready = False
 
-def make_server(bridge, port, ips, usb=False):
+def make_server(bridge, port, ips, usb=True):
+    if not usb:
+        raise ValueError("CamTether supports direct USB loopback only.")
     html = (ROOT/'phone.html').read_bytes()
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.1'
@@ -212,7 +157,7 @@ def make_server(bridge, port, ips, usb=False):
             if not self.authorized():
                 self.reply(403); return
             origin = self.headers.get('Origin')
-            if origin and origin != ('http://' if usb else 'https://') + self.headers.get('Host', ''):
+            if origin and origin != 'http://' + self.headers.get('Host', ''):
                 self.reply(403); return
             if self.path == '/stop':
                 bridge.stop(); self.reply(204); return
@@ -233,25 +178,15 @@ def make_server(bridge, port, ips, usb=False):
     class Server(ThreadingHTTPServer):
         daemon_threads = True
         def handle_error(self, request, client_address):
-            # Expected when the phone/browser initially rejects the local certificate.
-            if not isinstance(sys.exc_info()[1], (OSError, ssl.SSLError)):
+            if not isinstance(sys.exc_info()[1], OSError):
                 super().handle_error(request, client_address)
-        # Complete TLS handshakes in request threads, not the accept loop.
         def get_request(self):
             sock, address = super().get_request()
             sock.settimeout(6)
-            if usb:
-                return sock, address
-            return self.context.wrap_socket(sock, server_side=True, do_handshake_on_connect=False), address
+            return sock, address
 
-    if usb:
-        return Server(('127.0.0.1', port), Handler)
-    cert, key = certificate(ips)
-    server = Server(('0.0.0.0', port), Handler)
-    server.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    server.context.minimum_version = ssl.TLSVersion.TLSv1_2
-    server.context.load_cert_chain(cert, key)
-    return server
+    return Server(('127.0.0.1', port), Handler)
+
 
 def adb_command(*args):
     adb = ROOT/'android-tools'/'platform-tools'/'adb.exe'
@@ -264,19 +199,19 @@ def adb_command(*args):
         raise RuntimeError('USB connection is not ready. Enable USB debugging and accept "Allow USB debugging" on your OPPO.\n\n'+detail)
     return result.stdout.strip()
 
-def show_window(bridge, port, ips, usb=False):
+def show_window(bridge, port, ips, usb=True):
     from desktop import show
     show(bridge, port, ips, usb, ROOT, adb_command)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=8443)
+    parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--state-file', type=Path)
-    parser.add_argument('--usb', action='store_true', help='Direct USB forwarding; requires USB debugging')
+    parser.add_argument('--usb', action='store_true', default=True, help='Direct USB forwarding; requires USB debugging')
     args = parser.parse_args()
-    ips, bridge = (['127.0.0.1'] if args.usb else local_ips()), Bridge()
+    ips, bridge = ['127.0.0.1'], Bridge()
     from effects import Effects
     bridge.effects = Effects(ROOT, storage=user_data_dir())
     threading.Thread(target=bridge.effects.run,args=(bridge,),daemon=True).start()

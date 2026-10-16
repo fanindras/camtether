@@ -4,7 +4,7 @@ using System.IO;
 using System.Windows.Forms;
 using System.Reflection;
 [assembly: AssemblyTitle("CamTether")]
-[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyVersion("1.1.2.0")]
 class Launcher {
     [STAThread] static int Main() {
         try {
