@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>PhoneCam · Camera</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#10171b;color:#eaf1ed}body{max-width:600px;margin:0 auto;padding:24px}h1{font-size:34px;margin-bottom:8px}p{color:#b8c9c1;line-height:1.55}video{width:100%;max-height:52vh;background:#060a0c;border-radius:16px;object-fit:contain}button,select{font:inherit;border:0;border-radius:10px;padding:14px;margin:6px 6px 6px 0}button{background:#9be9b5;color:#10241a;font-weight:650}button:disabled{opacity:.45}select,#stop{background:#29383d;color:white}#status{padding:16px 0;min-height:48px}small{display:block;color:#93a79e;line-height:1.6}.tag{font:12px monospace;letter-spacing:2px;color:#9be9b5}
+</style>
+<div class="tag">PHONECAM / LOCAL CONNECTION</div><h1>Your phone. Your webcam.</h1>
+<p>Keep this page open and the screen unlocked. Video goes to your laptop on the local network.</p>
+<video id="preview" autoplay muted playsinline></video>
+<div><select id="facing" aria-label="Camera"><option value="environment">Rear camera</option><option value="user">Front camera</option></select><select id="quality" aria-label="Video quality"><option value="fast">Lower latency · 540p</option><option value="sharp" selected>Sharper · 720p</option></select></div>
+<button id="start">Start camera</button><button id="stop" disabled>Stop</button>
+<div id="status" role="status" aria-live="polite">Ready to connect.</div>
+<small>In Zoom, Teams, or Meet, select <b>OBS Virtual Camera</b>. Use your laptop microphone. No video is recorded by PhoneCam.</small>
+<script>
+const token=new URLSearchParams(location.hash.slice(1)).get('token');
+const wired=location.hostname==='127.0.0.1';
+if(wired)document.querySelector('p').textContent='Keep this page open and the screen unlocked. Video travels to your laptop through the USB cable.';
+const video=document.querySelector('video'), status=document.querySelector('#status'), start=document.querySelector('#start'), stop=document.querySelector('#stop'), facing=document.querySelector('#facing');
+const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d',{alpha:false});
+const quality=document.querySelector('#quality');
+try{
+ const saved=JSON.parse(localStorage.getItem('phonecam-camera')||'{}');
+ if(['user','environment'].includes(saved.facing))facing.value=saved.facing;
+ if(['fast','sharp'].includes(saved.quality))quality.value=saved.quality;
+}catch{}
+let captureWidth=960,captureHeight=540,jpegQuality=.65;
+let stream=null,running=false,generation=0,wake=null,pendingUpload=null;
+const headers={'X-PhoneCam-Token':token||''};
+function tell(s){status.textContent=s}
+async function stopCamera(message='Camera stopped.'){
+ running=false;generation++;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;
+ if(wake){try{await wake.release()}catch{}wake=null}
+ stop.disabled=true;tell('Stopping camera…');
+ try{if(pendingUpload)await pendingUpload}catch{}
+ try{await fetch('/stop',{method:'POST',headers,signal:AbortSignal.timeout(1500)})}catch{}
+ start.disabled=false;facing.disabled=false;quality.disabled=false;tell(message);
+}
+// One encoded frame waiting, one upload in flight: never accumulate video latency.
+async function captureFrames(id,slot){
+ while(running&&id===generation){
+  const began=performance.now();
+  try{
+   if(video.videoWidth){
+    const portrait=video.videoHeight>video.videoWidth;
+    const scale=Math.min((portrait?captureHeight:captureWidth)/video.videoWidth,(portrait?captureWidth:captureHeight)/video.videoHeight,1);
+    const w=Math.round(video.videoWidth*scale),h=Math.round(video.videoHeight*scale);
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+    ctx.drawImage(video,0,0,w,h);
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',jpegQuality));
+    if(!running||id!==generation)return;
+    if(!blob)throw Error('Camera could not encode a frame');
+    slot.latest={blob,at:began};
+   }
+  }catch(error){slot.error=error;return}
+  await new Promise(r=>setTimeout(r,Math.max(0,1000/30-(performance.now()-began))));
+ }
+}
+async function pump(id){
+ let count=0, failures=0, reportTime=performance.now(), reportFrames=0;
+ const slot={latest:null,error:null};
+ captureFrames(id,slot);
+ while(running&&id===generation){
+  try{
+   if(slot.error){await stopCamera('Camera encoding failed. Tap Start camera to retry.');return}
+   const next=slot.latest;slot.latest=null;
+   if(!next||performance.now()-next.at>150){await new Promise(r=>setTimeout(r,4));continue}
+   const blob=next.blob;
+   pendingUpload=fetch('/frame',{method:'POST',headers:{...headers,'Content-Type':'image/jpeg'},body:blob,signal:AbortSignal.timeout(4000)});
+   const response=await pendingUpload;
+   if(!running||id!==generation)return;
+   if(response.status===403){await stopCamera('Pairing expired. Scan the QR code on your laptop again.');return}
+   if(!response.ok)throw Error('Laptop returned '+response.status);
+   failures=0;count++;
+   const now=performance.now();
+   if(count===1||now-reportTime>=1000){
+    const fps=Math.round((count-reportFrames)*1000/Math.max(1,now-reportTime));
+    tell('Live · '+canvas.width+' × '+canvas.height+' · '+fps+' fps · '+count+' frames sent');
+    reportTime=now;reportFrames=count;
+   }
+  }catch(e){
+   if(!running||id!==generation)return;
+   failures++;tell(wired?'USB connection interrupted. Retrying… Check the cable.':'Connection interrupted. Retrying… Keep both devices on the same network.');
+   if(failures>=8){await stopCamera('Connection lost. Check the laptop app and tap Start camera to retry.');return}
+   await new Promise(r=>setTimeout(r,600));
+  }
+
+ }
+}
+async function startCamera(){
+ if(running||start.disabled)return;
+ start.disabled=true;facing.disabled=true;quality.disabled=true;tell('Waiting for camera permission…');
+ try{
+  if(!token)throw Error('Scan the pairing QR code in the laptop app first.');
+  const check=await fetch('/status',{headers,signal:AbortSignal.timeout(4000)});
+  if(!check.ok)throw Error('Pairing expired. Use Wake phone & start camera in the PC app.');
+  if(!isSecureContext||!navigator.mediaDevices)throw Error('Camera access needs HTTPS. Open the exact https:// address shown on your laptop in Chrome.');
+  try{localStorage.setItem('phonecam-camera',JSON.stringify({facing:facing.value,quality:quality.value}))}catch{}
+  captureWidth=quality.value==='fast'?960:1280;captureHeight=quality.value==='fast'?540:720;jpegQuality=quality.value==='fast'?.65:.78;
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing.value},width:{ideal:captureWidth},height:{ideal:captureHeight},frameRate:{ideal:30,max:30}},audio:false});
+  video.srcObject=stream;await video.play();running=true;stop.disabled=false;const id=++generation;
+  try{wake=await navigator.wakeLock.request('screen')}catch{}
+  stream.getVideoTracks()[0].onended=()=>{if(running)stopCamera('Camera access ended. Tap Start camera to retry.')};
+  pump(id);
+ }catch(e){await stopCamera(e.name==='NotAllowedError'?'Camera permission was denied. Allow camera access in Chrome site settings, then try again.':e.message)}
+}
+start.onclick=startCamera;
+stop.onclick=()=>stopCamera();
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stopCamera('Camera paused because this page was hidden. Tap Start camera to resume.')});
+window.addEventListener('pagehide',()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
+if(!token){start.disabled=true;tell('Scan the QR code shown in the PhoneCam laptop app to pair.')}
+// Only an explicit PC launch link requests auto-start; ordinary page opens do not.
+let pcStartPending=token&&new URLSearchParams(location.search).get('start')==='1';
+function startFromPC(){
+ if(pcStartPending&&!document.hidden){
+  pcStartPending=false;
+  const clean=new URL(location.href);clean.searchParams.delete('start');
+  history.replaceState(null,'',clean);
+  startCamera();
+ }
+}
+document.addEventListener('visibilitychange',startFromPC);
+if(pcStartPending){tell('Start requested from your PC…');setTimeout(startFromPC,200)}
+</script></html>
