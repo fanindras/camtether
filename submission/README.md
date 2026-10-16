@@ -20,7 +20,7 @@ video only. This app is not affiliated with OBS, Google or Microsoft. Performanc
 varies by hardware; 30 fps is a target, not a guarantee. Keystone correction is
 limited and cannot recreate a different physical camera viewpoint.
 
-Suggested category: Photo & video. Proposed price: free (owner to confirm).
+Category: Photo & video. Owner-confirmed price: free in all available markets.
 Privacy URL: https://github.com/fanindras/camtether/blob/main/PRIVACY.md
 Support URL: https://github.com/fanindras/camtether/issues
 
@@ -46,10 +46,11 @@ change security policy, bypass phone locks or require administrator privileges.
 
 - Test the Store-installed package on Windows with Smart App Control enabled;
   this cannot be claimed from unpacked-runtime tests or unsigned package creation.
-- Complete Windows App Certification Kit and actual installed-package lifecycle tests.
+- Resolve WACK findings; installed test-package lifecycle passed. See STORE-CHECKS-1.1.1.md.
 - Resolve third-party binary redistribution / corresponding-source obligations.
 - Capture real product screenshots without personal camera content.
 - Owner completes age rating, markets/pricing, support declarations and any binding
   submission declarations. No answers to those legal declarations are invented here.
 
-No package has been uploaded or submitted for certification in this change.
+The 1.1.1.0 package is uploaded and marked Validated in a private Store draft.
+It has not been submitted for certification. Automatic publication is on hold.

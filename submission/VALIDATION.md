@@ -1,5 +1,9 @@
 # Validation - 2026-10-17
 
+Latest update: see STORE-CHECKS-1.1.1.md for the completed WACK run, isolated
+installed-package lifecycle test, dependency provenance audit and private Store
+upload. The records below describe the earlier test stage.
+
 Version 1.1.0.0, x64, Store identity FanindraChaubey.CamTether.
 
 Passed:

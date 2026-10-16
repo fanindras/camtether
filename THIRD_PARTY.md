@@ -24,5 +24,7 @@ Fulfill corresponding-source and notice obligations for the exact GPL components
 and their bundled code, and review compatibility of the combined distribution,
 including the Apache-licensed components. Source references above do not by
 themselves constitute a complete corresponding-source delivery. The public
-repository contains only original source; the candidate MSIX remains local until
-these distribution checks and Store certification are complete.
+repository contains original source and audit records. The candidate MSIX was
+uploaded to a private Partner Center draft for package validation; it has not
+been submitted for certification or publicly released. See
+submission/STORE-CHECKS-1.1.1.md for completed checks and unresolved findings.

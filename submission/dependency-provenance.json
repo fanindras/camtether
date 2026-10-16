@@ -1,0 +1,92 @@
+[
+  {
+    "name": "cffi",
+    "version": "2.1.1",
+    "wheel": "cffi-2.1.1-cp313-cp313-win_amd64.whl",
+    "sha256": "1aa5645c30469b09530c4ebca77ebf8f17618293c58f8549cb1a543a50236e7d",
+    "matched_files": 30,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "colorama",
+    "version": "0.4.6",
+    "wheel": "colorama-0.4.6-py2.py3-none-any.whl",
+    "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+    "matched_files": 9,
+    "omitted_test_files": 7,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "cryptography",
+    "version": "50.0.2",
+    "wheel": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+    "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+    "matched_files": 119,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "numpy",
+    "version": "2.5.4",
+    "wheel": "numpy-2.5.4-cp313-cp313-win_amd64.whl",
+    "sha256": "8b4d2fd2d34e5f8c9235ee787de5631a37a28402b15cb80814df973d2be54129",
+    "matched_files": 451,
+    "omitted_test_files": 493,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "onnxruntime",
+    "version": "1.31.0",
+    "wheel": "onnxruntime-1.31.0-cp313-cp313-win_amd64.whl",
+    "sha256": "73e0165d58ece068c2a8a1c477c90b38e5a8adbbd399fdfdfd4bd79cbc28ff8d",
+    "matched_files": 322,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "pillow",
+    "version": "12.3.0",
+    "wheel": "pillow-12.3.0-cp313-cp313-win_amd64.whl",
+    "sha256": "1cca606cd25738df4ed873d5ad46bbdb3d83b5cbca291f6b4ff13a4df6b0bbe8",
+    "matched_files": 120,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "pycparser",
+    "version": "3.11",
+    "wheel": "pycparser-3.11-py3-none-any.whl",
+    "sha256": "51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80",
+    "matched_files": 12,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "pyvirtualcam",
+    "version": "0.15.0",
+    "wheel": "pyvirtualcam-0.15.0-cp313-cp313-win_amd64.whl",
+    "sha256": "5deb5a68a95a9b3a67bac3b0c614ed084421ec22726a811fc6c575864f912be2",
+    "matched_files": 10,
+    "omitted_test_files": 0,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  },
+  {
+    "name": "qrcode",
+    "version": "8.2",
+    "wheel": "qrcode-8.2-py3-none-any.whl",
+    "sha256": "16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f",
+    "matched_files": 28,
+    "omitted_test_files": 10,
+    "changed_files": 0,
+    "pypi_known_vulnerability_entries_on_2026_10_17": 0
+  }
+]
