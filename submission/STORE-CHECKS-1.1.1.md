@@ -7,9 +7,13 @@ Checked 2026-10-17. This supplements VALIDATION.md and REVIEW-1.1.1.md.
 - Uploaded the 60.60 MB x64 MSIX to the private Partner Center submission draft.
   Partner Center reports **Validated**, Packages **Complete**. This is package
   acceptance, not Store certification or public availability.
+- Submitted-package SHA-256:
+  397b46bfe8a36de8035b80d07ad3732374bb1cc570a819a55c5eded5053af4de.
 - Set free pricing in all 240 currently available markets, desktop device family
   only, and manual publication after certification. Saved the runFullTrust
   justification; Microsoft must still approve that capability.
+- Saved Photo + video category, privacy/support URLs, and English listing copy.
+  The listing remains incomplete because a product screenshot is required.
 - Installed Microsoft Windows App Certification Kit 10.0.28000.2957 and ran its
   complete package-path test against the submitted MSIX. Result: WARNING;
   22 tests PASS, one optional test FAIL, one test WARNING. Not a clean pass.
@@ -52,7 +56,11 @@ Checked 2026-10-17. This supplements VALIDATION.md and REVIEW-1.1.1.md.
 4. Live Android-to-OBS performance, Store-signed installation with Smart App
    Control enabled, and multi-monitor DPI behavior are not established by the
    package-path and isolated-identity tests. This PC's SAC setting remains off.
+   The final ADB device check found zero authorized USB phones. Its temporary
+   ADB server was stopped after the check.
 5. Store screenshots, age rating, and final owner declarations remain required.
+   The age-rating page redirected to the Partner Center root on two attempts;
+   browser diagnostics reported failed fetch requests. No rating was submitted.
 
 No public release or final certification submission was made by these checks.
 
