@@ -1,6 +1,6 @@
 # CamTether Store submission preparation
 
-Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.0.0 | Architecture: x64
+Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.1.0 | Architecture: x64
 Package identity and publisher are fixed in packaging/AppxManifest.xml.
 Minimum Windows version: Windows 10 build 19041.
 

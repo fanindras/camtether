@@ -44,6 +44,8 @@ class Effects:
             self.settings.update({k:v for k,v in saved.items() if k in DEFAULTS})
         except (OSError,ValueError):pass
         self.lock=threading.RLock()
+        self.wake=threading.Event()
+        self.output_epoch=-1;self.output_received_at=0.;self.processing_ms=0.
         self.revision=0;self.output=None;self.output_id=0;self.fps=0.;self.status='Edits saved automatically'
         self.background_image=None;self.session=None;self.mask=None;self.mask_key=None;self.mask_time=0.
         self.mask_job=None;self.mask_event=threading.Event();self.error=''
@@ -62,13 +64,13 @@ class Effects:
 
     def set(self, **changes):
         with self.lock:
-            self.settings.update(changes);self.revision+=1
+            self.settings.update(changes);self.revision+=1;self.wake.set()
             if any(k in changes for k in ('rotation','mirror','auto_keystone')):
                 self.auto_generation+=1;self.auto_value=0.
 
     def recalibrate(self):
         with self.lock:
-            self.auto_generation+=1;self.auto_value=0.;self.revision+=1
+            self.auto_generation+=1;self.auto_value=0.;self.revision+=1;self.wake.set()
 
     def auto_worker(self,bridge):
         from auto_keystone import estimate,consensus
@@ -95,7 +97,7 @@ class Effects:
                 value=consensus(samples);finished=True
                 with self.lock:
                     if self.auto_generation!=current[-1]:continue
-                    self.auto_value=value if value is not None else 0.;self.revision+=1
+                    self.auto_value=value if value is not None else 0.;self.revision+=1;self.wake.set()
                 self.auto_status=('Auto keystone: insufficient reliable lines; unchanged' if value is None else
                                   f'Auto keystone locked: {value:+.3f} (mild correction)')
             except Exception:
@@ -141,6 +143,8 @@ class Effects:
             import onnxruntime as ort
             ort.disable_telemetry_events()
             options=ort.SessionOptions();options.intra_op_num_threads=2;options.inter_op_num_threads=1
+            options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+            options.add_session_config_entry("session.inter_op.allow_spinning", "0")
             self.session=ort.InferenceSession(str(self.root/'models'/'humanseg.onnx'),sess_options=options,providers=['CPUExecutionProvider'])
         data=np.asarray(image.resize((192,192),Image.Resampling.BILINEAR),dtype=np.float32)/127.5-1.
         tensor=np.ascontiguousarray(data.transpose(2,0,1)[None])
@@ -164,12 +168,14 @@ class Effects:
             except Exception as error:
                 self.error='Background processing unavailable: '+str(error)
                 closed.wait(1)
+            finally:
+                job=None;image=None
 
     def process(self,frame,s,revision):
         image=self.geometry(Image.fromarray(frame),s,self.output_size)
         mode=s['background']
         if mode!='Original':
-            key=(frame.shape[:2],)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))
+            key=(frame.shape[:2],)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(s.get('_stream_epoch',0),)
             with self.lock:
                 # PIL operations below return new images; the worker can share this immutable input.
                 self.mask_job=(image,key)
@@ -217,19 +223,21 @@ class Effects:
         threading.Thread(target=self.auto_worker,args=(bridge,),daemon=True).start()
         last=None;count=0;began=time.monotonic()
         while not bridge.closed.is_set():
-            frame=bridge.raw_current()
-            s,rev=self.snapshot();key=(bridge.count,rev)
+            self.wake.clear()
+            frame,number,epoch,received_at=bridge.raw_snapshot()
+            s,rev=self.snapshot();key=(number,rev,epoch)
+            s['_stream_epoch']=epoch
             if s['auto_keystone']:
                 s.update(keystone_v=self.auto_value,keystone_h=0.,level=0.)
             if frame is None:
-                self.output=None;last=None;bridge.closed.wait(.02);continue
-            if key==last:bridge.closed.wait(.004);continue
+                self.output=None;last=None;self.wake.wait(.5);continue
+            if key==last:self.wake.wait(.5);continue
             start=time.monotonic()
             try:
                 output=self.process(frame,s,rev)
                 # Don't publish a frame from a previous pairing or stopped stream.
-                if bridge.raw_current() is not None:
-                    self.output=output;self.output_id+=1
+                bridge.publish_processed(output,epoch,received_at)
+                self.processing_ms=(time.monotonic()-start)*1000
                 last=key;count+=1
             except Exception as error:
                 self.status='Edit error: '+str(error);self.output=None;bridge.closed.wait(.1)

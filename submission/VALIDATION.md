@@ -22,3 +22,7 @@ Limits:
 - Package is unsigned for Store submission preparation. No development certificate
   was created or trusted. No Windows security policy was weakened.
 - Third-party distribution review remains a publication gate; see THIRD_PARTY.md.
+
+## Revision 1.1.1.0
+
+See REVIEW-1.1.1.md: 20 regression tests pass, plus the rebuilt packaged-runtime and fake-camera tests. The original installed-MSIX/Smart App Control/Store gates above still apply. No Store upload was performed.

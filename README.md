@@ -6,7 +6,7 @@ and the OBS Virtual Camera endpoint. Keep the phone browser visible and unlocked
 
 ## Release status
 
-Version 1.1.0.0 is an unsigned MSIX submission candidate, not a published Store app.
+Version 1.1.1.0 is an unsigned MSIX submission candidate, not a published Store app.
 The Microsoft Store name is reserved (9PLVZCDDDT9H). Do not disable Smart App Control
 or install a self-signed certificate. Microsoft signs accepted MSIX submissions.
 See [submission preparation](submission/README.md) for remaining release gates.
@@ -56,3 +56,5 @@ are not downloaded silently by the build. See submission/VALIDATION.md.
 Original source is MIT. Third-party components keep their own licenses, including
 GPLv2 for pyvirtualcam. Binary distribution must fulfill applicable obligations;
 the whole bundle is not MIT-only. See THIRD_PARTY.md and PRIVACY.md.
+
+See [1.1.1 review and measurements](submission/REVIEW-1.1.1.md) for reconnect fixes and CPU tradeoffs.

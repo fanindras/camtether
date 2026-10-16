@@ -80,12 +80,17 @@ class Bridge:
         self.frame = None
         self.last_frame = 0.0
         self.count = 0
+        self.epoch = 0
         self.driver_status = 'Starting webcam output…'
         self.driver_ready = False
         self.closed = threading.Event()
         self.effects = None
 
     def accept(self, data, token):
+        with self.lock:
+            epoch = self.epoch
+            if not hmac.compare_digest(token, self.token):
+                return False
         with Image.open(io.BytesIO(data)) as image:
             if image.format != 'JPEG' or image.width*image.height > 4_000_000:
                 raise ValueError('JPEG frame too large or invalid')
@@ -94,29 +99,53 @@ class Bridge:
             image = image.convert('RGB')
             frame = np.asarray(image).copy()
         with self.lock:
-            if not hmac.compare_digest(token, self.token):
+            if epoch != self.epoch or not hmac.compare_digest(token, self.token):
                 return False
+            if self.last_frame and time.monotonic()-self.last_frame >= 2:
+                self.epoch += 1
             self.frame, self.last_frame = frame, time.monotonic()
             self.count += 1
+            if self.effects:self.effects.wake.set()
         return True
 
     def stop(self):
         with self.lock:
             self.frame, self.last_frame = None, 0
+            self.epoch += 1
+            if self.effects:self.effects.wake.set()
 
     def rotate_pairing(self):
         with self.lock:
             self.token = secrets.token_urlsafe(24)
             self.frame, self.last_frame = None, 0
+            self.epoch += 1
+            if self.effects:self.effects.wake.set()
+
+    def raw_snapshot(self):
+        with self.lock:
+            frame = self.frame if time.monotonic()-self.last_frame < 2 else None
+            return frame, self.count, self.epoch, self.last_frame
 
     def raw_current(self):
+        return self.raw_snapshot()[0]
+
+    def publish_processed(self, frame, epoch, received_at):
         with self.lock:
-            return self.frame if time.monotonic()-self.last_frame < 2 else None
+            if epoch != self.epoch or self.frame is None or time.monotonic()-received_at >= 2:
+                return False
+            self.effects.output = frame
+            self.effects.output_epoch = epoch
+            self.effects.output_received_at = received_at
+            self.effects.output_id += 1
+            return True
 
     def current(self):
-        frame = self.raw_current()
-        if frame is None:return None
-        return self.effects.output if self.effects is not None else frame
+        with self.lock:
+            if self.frame is None or time.monotonic()-self.last_frame >= 2:return None
+            if self.effects is None:return self.frame
+            if self.effects.output_epoch != self.epoch:return None
+            if time.monotonic()-self.effects.output_received_at >= 2:return None
+            return self.effects.output
 
     def virtual_camera(self):
         blank = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
@@ -172,7 +201,9 @@ def make_server(bridge, port, ips, usb=False):
                 data = {'frames': bridge.count, 'live': bridge.current() is not None,
                         'virtual_camera': bridge.driver_ready,
                         'processed_fps': round(bridge.effects.fps,1) if bridge.effects else None,
-                        'editor_status': bridge.effects.status if bridge.effects else None}
+                        'editor_status': bridge.effects.status if bridge.effects else None,
+                        'processing_ms': round(bridge.effects.processing_ms,1) if bridge.effects else None,
+                        'output_age_ms': round((time.monotonic()-bridge.effects.output_received_at)*1000,1) if bridge.effects and bridge.current() is not None else None}
                 self.reply(200, json.dumps(data).encode(), 'application/json')
             else:
                 self.reply(404)

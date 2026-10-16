@@ -26,7 +26,7 @@ csc=Path(__import__('os').environ['WINDIR'])/'Microsoft.NET'/'Framework64'/'v4.0
 subprocess.run([str(csc),'/nologo','/target:winexe','/platform:x64','/reference:System.Windows.Forms.dll','/out:'+str(stage/'CamTether.exe'),str(repo/'packaging'/'Launcher.cs')],check=True)
 manifest={str(p.relative_to(stage)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in stage.rglob('*') if p.is_file()}
 (args.output/'payload-sha256.json').write_text(json.dumps(manifest,indent=2))
-package=args.output/'CamTether-1.1.0.0-x64.msix'
+package=args.output/'CamTether-1.1.1.0-x64.msix'
 subprocess.run([str(args.makeappx.resolve()),'pack','/d',str(stage),'/p',str(package),'/o'],check=True)
 (args.output/'SHA256.txt').write_text(hashlib.sha256(package.read_bytes()).hexdigest()+'  '+package.name+'\n')
 print(package)
