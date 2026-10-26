@@ -2,8 +2,8 @@
 1 ICON "CamTether.ico"
 1 24 "launcher.manifest"
 1 VERSIONINFO
-FILEVERSION 1,1,4,0
-PRODUCTVERSION 1,1,4,0
+FILEVERSION 1,1,5,0
+PRODUCTVERSION 1,1,5,0
 FILEOS 0x00040004
 FILETYPE 1
 BEGIN
@@ -13,9 +13,9 @@ BEGIN
   BEGIN
    VALUE "CompanyName", "Fanindra Chaubey"
    VALUE "FileDescription", "CamTether USB Webcam"
-   VALUE "FileVersion", "1.1.4.0"
+   VALUE "FileVersion", "1.1.5.0"
    VALUE "ProductName", "CamTether"
-   VALUE "ProductVersion", "1.1.4.0"
+   VALUE "ProductVersion", "1.1.5.0"
    VALUE "OriginalFilename", "CamTether.exe"
   END
  END
@@ -24,5 +24,6 @@ BEGIN
   VALUE "Translation", 0x409, 1200
  END
 END
+
 
 

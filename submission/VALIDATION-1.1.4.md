@@ -49,3 +49,24 @@ not prove physical USB reconnect, phone permission, lens switching or actual
 approval and Store signing remain Microsoft's decision. Installation on the
 second laptop with Smart App Control enabled can only be confirmed using the
 Store-delivered build. Do not distribute the unsigned QA package to users.
+
+## 1.1.4.1 preview repaint correction
+
+- Moved the quality badge into a separate preview header so frame repaints cannot
+  erase it. Retain the old Tk photo until the replacement is attached and avoid
+  updating the badge when its text has not changed.
+- Clear the Applying message after the requested output size becomes active.
+- Installed QA version 1.1.4.10 with the new production launcher and desktop code.
+  Chrome and Edge both received 1280x720 reference video (31 frames per measured
+  second, expected red pixel). Live 720p-to-1080p switching and light/dark header
+  layout were checked without restarting the app.
+- Candidate: CamTether-1.1.4.1-x64.msix, 60,538,642 bytes.
+  SHA-256: b4651dac5c0dd3f8567a0f52e59cffd11b75996368b003835294c854ecdb2ca8.
+- The 1.1.4.1 certification rerun and Partner Center validation are pending.
+
+### Store version correction
+
+Partner Center rejected revision 1.1.4.1 because Store packages require the fourth
+version component to be zero. The same UI fix is repackaged as **1.1.5.0**.
+SHA-256: 19d14db5d995432b37c06e27d49749717bdafc85c08234910addcdfd02644fe8.
+The 1.1.4.1 WACK run completed with overall PASS; 1.1.5.0 is being rechecked.

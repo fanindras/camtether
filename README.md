@@ -6,7 +6,7 @@ and the CamTether camera endpoint. Keep the phone browser visible and unlocked.
 
 ## Release status
 
-Version 1.1.4.0 is an unsigned MSIX submission candidate, not a published Store app.
+Version 1.1.5.0 is an unsigned MSIX submission candidate, not a published Store app.
 The Microsoft Store name is reserved (9PLVZCDDDT9H). Do not disable Smart App Control
 or install a self-signed certificate. Microsoft signs accepted MSIX submissions.
 See [submission preparation](submission/README.md) for remaining release gates.
@@ -99,3 +99,5 @@ In Adjust, select Auto, 50 Hz or 60 Hz under Anti-flicker lighting. Changes appl
 The footer samples the busiest GPU engine across the Device every two seconds using Windows PDH, without launching subprocesses. Unsupported counters show unavailable, never a fabricated zero. Effects and color conversion currently run on the CPU. Processing time appears below the preview; consistently exceeding 33 ms cannot sustain 30 processed frames per second. Performance & optimization explains ways to reduce competing load without reducing output quality.
 
 Registration lifecycle: the installed app uses Windows' local registry provider at startup and shutdown, with no continuously running CamTether broker. Registrations are persistent until normal shutdown removes the entries belonging to that session. A crash can leave an entry until the next successful start and cleanup. Unrecognized entries and values are preserved. Close CamTether and use Remove webcam components before uninstalling if a prior session crashed.
+
+

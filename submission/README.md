@@ -1,6 +1,6 @@
 # CamTether Store submission preparation
 
-Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.4.0 | Architecture: x64
+Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.5.0 | Architecture: x64
 Package identity and publisher are fixed in packaging/AppxManifest.xml.
 Minimum Windows version: Windows 11 build 22000.
 
@@ -51,3 +51,5 @@ Store signing, verify installation on the target laptop with Smart App Control
 enabled. Local unpacked/unsigned tests do not establish that outcome.
 
 Publication remains manually controlled. The package is not publicly released.
+
+

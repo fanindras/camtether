@@ -32,9 +32,12 @@ def show(bridge,port,ips,usb,root,adb_command):
     rail=ttk.Frame(body,width=px(134));rail.pack(side='left',fill='y',padx=(0,16));rail.pack_propagate(False)
     right=ttk.Frame(body,width=px(330));right.pack(side='right',fill='y',padx=(20,0));right.pack_propagate(False)
     left=ttk.Frame(body);left.pack(side='left',fill='both',expand=True)
-    preview=tk.Label(left,bg=palette['preview'],fg=palette['muted'],text='Connect your phone with USB\n\nWake phone & start camera',font=('Segoe UI',14));preview.pack(fill='both',expand=True)
-    output_badge=tk.Label(preview,text=f'{fx.output_size[1]}p  ·  30 fps',bg='#17212d',fg='white',font=('Segoe UI',11,'bold'),padx=12,pady=7)
-    output_badge.place(relx=1,x=-12,y=12,anchor='ne')
+    preview_pane=tk.Frame(left,bg=palette['preview']);preview_pane.pack(fill='both',expand=True)
+    preview_header=tk.Frame(preview_pane,bg=palette['preview']);preview_header.pack(fill='x')
+    output_badge=tk.Label(preview_header,text=f'{fx.output_size[1]}p  ·  30 fps',bg='#17212d',fg='white',font=('Segoe UI',11,'bold'),padx=12,pady=7)
+    output_badge.pack(side='right',padx=12,pady=12)
+    # Keep the badge outside the image widget so frame redraws cannot erase it.
+    preview=tk.Label(preview_pane,bg=palette['preview'],fg=palette['muted'],text='Connect your phone with USB\n\nWake phone & start camera',font=('Segoe UI',14));preview.pack(fill='both',expand=True)
     preview_info=ttk.Frame(left,padding=(12,12),style='Panel.TFrame');preview_info.pack(fill='x',pady=(12,0))
     stream_status=ttk.Label(preview_info,text='Waiting for camera',style='Status.TLabel');stream_status.pack(anchor='w')
     effect_status=ttk.Label(preview_info,text='',style='Status.TLabel');effect_status.pack(anchor='w',pady=(6,0))
@@ -61,6 +64,8 @@ def show(bridge,port,ips,usb,root,adb_command):
     def theme_changed():
         nonlocal palette
         palette=apply_theme(style,window,theme.get())
+        preview_pane.configure(bg=palette['preview'])
+        preview_header.configure(bg=palette['preview'])
         preview.configure(bg=palette['preview'],fg=palette['muted'])
         for canvas in canvases:canvas.configure(bg=palette['bg'])
         try:save_theme(fx.storage,theme.get())
@@ -95,9 +100,11 @@ def show(bridge,port,ips,usb,root,adb_command):
     quality_box.pack(fill='x',pady=(6,4))
     quality_note=ttk.Label(crop,text='30 fps target · applies while CamTether stays open',style='Help.TLabel',wraplength=px(285))
     quality_note.pack(fill='x',pady=(0,8))
+    quality_pending=[False]
     def select_quality(event=None):
         try:
             bridge.set_quality(quality.get())
+            quality_pending[0]=True
             quality_note.configure(text=f'Applying {quality.get()}... A short video pause is normal. Some meeting apps retain their negotiated size until you reselect the camera.')
         except OSError as error:messagebox.showerror('Save video quality',str(error))
     quality_box.bind('<<ComboboxSelected>>',select_quality)
@@ -248,8 +255,9 @@ def show(bridge,port,ips,usb,root,adb_command):
             if frame is None:preview.configure(image='',text='Waiting for your phone…')
             else:
                 size=(max(100,preview.winfo_width()-4),max(100,preview.winfo_height()-4))
-                preview.picture=ImageTk.PhotoImage(ImageOps.contain(Image.fromarray(frame),size))
-                preview.configure(image=preview.picture,text='')
+                picture=ImageTk.PhotoImage(ImageOps.contain(Image.fromarray(frame),size))
+                preview.configure(image=picture,text='')
+                preview.picture=picture  # Release the previous image only after replacing it.
             previous[0]=marker
         ticks[0]+=1
         if ticks[0]%10==0:
@@ -257,7 +265,11 @@ def show(bridge,port,ips,usb,root,adb_command):
             effect_status.configure(text=fx.status.replace('laptop','Device'))
             gpu_label.configure(text=gpu.label)
             active=bridge.active_output_size
-            output_badge.configure(text=f'{active[1] if active else fx.output_size[1]}p  ·  30 fps'+('  ·  applying' if active and active!=fx.output_size else ''))
+            badge_text=f'{active[1] if active else fx.output_size[1]}p  ·  30 fps'+('  ·  applying' if active and active!=fx.output_size else '')
+            if output_badge.cget('text')!=badge_text:output_badge.configure(text=badge_text)
+            if quality_pending[0] and bridge.driver_ready and active==fx.output_size:
+                quality_note.configure(text=f'{active[1]}p active · 30 fps target. Reselect the camera in your meeting app if it keeps the previous size.')
+                quality_pending[0]=False
             info=bridge.camera_info
             lighting_status.configure(text=info.get('lighting_status','Connect the phone to check support.'))
             if frame is not None:stream_status.configure(text=f'LIVE  ·  {fx.fps:.0f} fps  ·  {fx.processing_ms:.1f} ms processing')
