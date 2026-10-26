@@ -44,12 +44,13 @@ change security policy, bypass phone locks or require administrator privileges.
 ## Validation and remaining acceptance checks
 
 See VALIDATION-1.1.4.md for the current test record. WACK overall PASS includes
-one disclosed optional blocked-executable finding. Age ratings are saved. Three
+one disclosed optional blocked-executable finding. Age ratings are saved. Two
 actual product screenshots use a labeled synthetic chart rather than personal video.
 The package still needs Microsoft certification and runFullTrust approval. After
 Store signing, verify installation on the target laptop with Smart App Control
 enabled. Local unpacked/unsigned tests do not establish that outcome.
 
-Publication remains manually controlled. The package is not publicly released.
+Partner Center is configured to publish after certification. The package is not yet publicly released.
+
 
 

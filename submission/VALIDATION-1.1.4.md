@@ -76,3 +76,10 @@ The same optional blocked-executable finding remains disclosed for review.
 Partner Center lists 1.1.5.0 with only restricted-capability approval warnings;
 its upload progress remains stuck and Save is disabled. Refresh awaits user
 approval because it may discard unsaved removal of superseded packages.
+
+Partner Center recovered after the user approved a page refresh. Version 1.1.5.0
+is saved and Validated, superseding 1.1.2.0 and 1.1.4.0. Age ratings remain Complete.
+Corresponding native source is published at
+https://github.com/fanindras/camtether/releases/tag/v1.1.5 .
+The draft listing now removes the full OBS requirement and uses two current
+Precision light/dark screenshots with a clearly labeled synthetic video chart.
