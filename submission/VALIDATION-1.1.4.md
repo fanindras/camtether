@@ -83,3 +83,9 @@ Corresponding native source is published at
 https://github.com/fanindras/camtether/releases/tag/v1.1.5 .
 The draft listing now removes the full OBS requirement and uses two current
 Precision light/dark screenshots with a clearly labeled synthetic video chart.
+
+Final submission outcome (2026-10-26): Submitted successfully. Partner Center
+shows **In certification**, Submission complete, Pre-processing in progress,
+Certification/Publishing not started. Publishing will begin after certification.
+Current package is 1.1.5.0. Microsoft approval/signing and second-laptop installation
+remain pending; no security settings were changed.
