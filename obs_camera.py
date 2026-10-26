@@ -1,4 +1,4 @@
-"""OBS Windows shared-memory output; no extra process or bundled camera library.
+"""OBS Windows shared-memory output using bundled conversion DLLs, without OBS Studio.
 
 Queue layout adapted from OBS Studio (GPL-2.0-or-later), commit
 45643adb036c3bb40a7e400203499abb4ad7a3dd, plugins/win-dshow/shared-memory-queue.c.
@@ -9,22 +9,13 @@ import ctypes as C
 import os
 from pathlib import Path
 import time
-import winreg
 
 import numpy as np
 
 
 def obs_bin():
-    """Use the registered 64-bit driver installation, never the working directory."""
-    key = r'CLSID\{A3FCE0F5-3493-419F-958A-ABA1250EC20B}\InprocServer32'
-    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, key, 0,
-                       winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
-        driver = Path(winreg.QueryValue(handle, None).strip('"')).resolve(strict=True)
-    for parent in driver.parents:
-        candidate = parent / 'bin' / '64bit'
-        if candidate.is_dir():
-            return candidate
-    raise RuntimeError('Cannot find the registered OBS Studio runtime. Reinstall OBS Studio.')
+    """Resolve bundled conversion libraries, independent of PATH and OBS installs."""
+    return Path(__file__).resolve().parent / 'native'
 
 
 class Converter:
@@ -38,7 +29,7 @@ class Converter:
         # for other versions rather than loading an untested ABI or arbitrary DLL.
         scale, util = folder / 'swscale-9.dll', folder / 'avutil-60.dll'
         if not scale.is_file() or not util.is_file():
-            raise RuntimeError('CamTether requires OBS Studio with FFmpeg 8 (swscale 9 / avutil 60).')
+            raise RuntimeError('CamTether conversion components are missing. Repair the CamTether installation.')
         try:
             self.directory = os.add_dll_directory(str(folder))
             self.util = C.CDLL(str(util))

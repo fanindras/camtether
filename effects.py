@@ -68,6 +68,12 @@ class Effects:
             if any(k in changes for k in ('rotation','mirror','auto_keystone')):
                 self.auto_generation+=1;self.auto_value=0.
 
+    def set_output_size(self, size):
+        with self.lock:
+            self.output_size=tuple(size)
+            self.revision+=1
+            self.wake.set()
+
     def recalibrate(self):
         with self.lock:
             self.auto_generation+=1;self.auto_value=0.;self.revision+=1;self.wake.set()
@@ -172,10 +178,10 @@ class Effects:
                 job=None;image=None
 
     def process(self,frame,s,revision):
-        image=self.geometry(Image.fromarray(frame),s,self.output_size)
+        image=self.geometry(Image.fromarray(frame),s,s.get('_output_size',self.output_size))
         mode=s['background']
         if mode!='Original':
-            key=(frame.shape[:2],)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(s.get('_stream_epoch',0),)
+            key=(frame.shape[:2],image.size)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(s.get('_stream_epoch',0),)
             with self.lock:
                 # PIL operations below return new images; the worker can share this immutable input.
                 self.mask_job=(image,key)
@@ -226,6 +232,7 @@ class Effects:
             self.wake.clear()
             frame,number,epoch,received_at=bridge.raw_snapshot()
             s,rev=self.snapshot();key=(number,rev,epoch)
+            s['_output_size']=self.output_size
             s['_stream_epoch']=epoch
             if s['auto_keystone']:
                 s.update(keystone_v=self.auto_value,keystone_h=0.,level=0.)

@@ -1,8 +1,8 @@
 # CamTether Store submission preparation
 
-Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.2.0 | Architecture: x64
+Product: CamTether | Store ID: 9PLVZCDDDT9H | Version: 1.1.4.0 | Architecture: x64
 Package identity and publisher are fixed in packaging/AppxManifest.xml.
-Minimum Windows version: Windows 10 build 19041.
+Minimum Windows version: Windows 11 build 22000.
 
 ## Draft listing text
 
@@ -14,8 +14,7 @@ PC. Settings and your chosen background are remembered locally. Video is process
 on your laptop. Background removal can show imperfect edges during fast motion.
 
 Requires Android USB debugging, Chrome camera permission and an unlocked phone
-with the camera page visible. Requires separately installed OBS Studio 32.2.2 x64 (FFmpeg 8 runtime) for the
-OBS Virtual Camera component. Laptop microphone supplies audio; CamTether carries
+with the camera page visible. The small virtual-camera components are included; OBS Studio is not required. Laptop microphone supplies audio; CamTether carries
 video only. This app is not affiliated with OBS, Google or Microsoft. Performance
 varies by hardware; 30 fps is a target, not a guarantee. Keystone correction is
 limited and cannot recreate a different physical camera viewpoint.
@@ -28,23 +27,23 @@ Support URL: https://github.com/fanindras/camtether/issues
 
 The desktop app runs a local Python image-processing runtime, communicates with
 Android Debug Bridge for explicitly authorized USB forwarding and screen wake,
-and sends local frames to the separately installed OBS virtual-camera component.
+and sends local frames to the bundled virtual-camera component.
 It requires normal desktop process privileges. It does not install a driver,
 change security policy, bypass phone locks or require administrator privileges.
 
 ## Reviewer test notes
 
-1. Install OBS Studio 32.2.2 x64 separately, leave OBS's virtual-camera producer stopped.
+1. Install CamTether. No OBS Studio installation is required.
 2. Connect an Android phone by USB, enable USB debugging and approve the PC.
 3. Launch CamTether, choose Wake phone & start camera, grant phone Chrome camera
    permission, and leave the phone unlocked and its page visible.
-4. Select OBS Virtual Camera in a receiving app. Check framing and background.
+4. Select CamTether in a receiving app. Check framing and background.
 5. Close and reopen CamTether; verify settings and background persistence.
 6. Stop the phone camera; output should clear. Test cable loss and recovery.
 
 ## Validation and remaining acceptance checks
 
-See STORE-CHECKS-1.1.2.md for the current test record. WACK overall PASS includes
+See VALIDATION-1.1.4.md for the current test record. WACK overall PASS includes
 one disclosed optional blocked-executable finding. Age ratings are saved. Three
 actual product screenshots use a labeled synthetic chart rather than personal video.
 The package still needs Microsoft certification and runFullTrust approval. After

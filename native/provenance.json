@@ -1,0 +1,29 @@
+{
+  "obs_version": "32.2.2",
+  "obs_commit": "ba2f32bdf791005443988a4955e963663e16b1ed",
+  "libdshowcapture_commit": "8878638324393815512f802640b0d5ce940161f1",
+  "obs_deps_commit": "8683107a02300923abe4f293920f4b5edc8cb624",
+  "ffmpeg_commit": "38b88335f99e76ed89ff3c93f877fdefce736c13",
+  "files": {
+    "avutil-60.dll": {
+      "bytes": 907024,
+      "sha256": "91a0ccadff6431b58efd02cca64b36bef547d634d79566b9b019232d441b06ee"
+    },
+    "obs-virtualcam-module32.dll": {
+      "bytes": 197904,
+      "sha256": "e9513840e2b96db8ceeb41cf6f5fdb85e58fe7dc44b6b9afb62b198c5505aa88"
+    },
+    "obs-virtualcam-module64.dll": {
+      "bytes": 238864,
+      "sha256": "0dcde4a969a7ce45a39472d39bd15f5bfff242a06449b27c61e20e667358ec34"
+    },
+    "placeholder.png": {
+      "bytes": 314050,
+      "sha256": "1e61418a7f2a8326ab9e67b6d8445caf85532a2e4bf40a79e7f11913afadde79"
+    },
+    "swscale-9.dll": {
+      "bytes": 1010448,
+      "sha256": "e254f3cb131035214e152146016abd08cca3dc12c8d810e2809f27e363654c1c"
+    }
+  }
+}

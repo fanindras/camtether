@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk,filedialog,colorchooser,messagebox
 from PIL import Image,ImageTk,ImageOps
 from effects import DEFAULTS
+from ui_theme import load_theme,save_theme,apply_theme
 
 def show(bridge,port,ips,usb,root,adb_command):
     from windows_dpi import enable_dpi_awareness
@@ -13,24 +14,59 @@ def show(bridge,port,ips,usb,root,adb_command):
     dpi_scale = window.winfo_fpixels('1i') / 96
     px = lambda value: round(value * dpi_scale)
     window.geometry(f'{min(px(1190),window.winfo_screenwidth()-40)}x{min(px(800),window.winfo_screenheight()-80)}')
-    window.minsize(px(980),px(700));window.configure(bg='#10171b')
+    window.minsize(px(980),px(650))
     style=ttk.Style(window);style.theme_use('clam')
-    style.configure('TFrame',background='#10171b');style.configure('TLabel',background='#10171b',foreground='#eaf1ed',font=('Segoe UI',10))
-    style.configure('TNotebook',background='#10171b');style.configure('TNotebook.Tab',padding=(12,9))
-    style.configure('TButton',padding=(10,7));style.configure('TCheckbutton',background='#10171b',foreground='#eaf1ed')
+    theme=tk.StringVar(value=load_theme(fx.storage))
+    palette=apply_theme(style,window,theme.get())
     header=ttk.Frame(window,padding=(22,18));header.pack(fill='x')
-    ttk.Label(header,text='CAMTETHER',font=('Segoe UI',20,'bold')).pack(side='left')
-    ttk.Label(header,text='USB camera · Edit your video here',foreground='#9be9b5').pack(side='left',padx=20)
+    logo_path=root/'branding'/'phone-usb.png'
+    if logo_path.exists():
+        with Image.open(logo_path) as icon:
+            window.logo=ImageTk.PhotoImage(ImageOps.contain(icon.convert('RGBA'),(px(52),px(52))))
+        ttk.Label(header,image=window.logo).pack(side='left',padx=(0,10))
+        window.iconphoto(True,window.logo)
+    ttk.Label(header,text='CamTether',font=('Segoe UI',22,'bold')).pack(side='left')
+    ttk.Label(header,text='USB webcam',style='Muted.TLabel').pack(side='left',padx=16)
+    theme_bar=ttk.Frame(header);theme_bar.pack(side='right',padx=(14,0))
     body=ttk.Frame(window,padding=(20,0));body.pack(fill='both',expand=True)
-    right=ttk.Frame(body,width=px(350));right.pack(side='right',fill='y',padx=(16,0));right.pack_propagate(False)
+    rail=ttk.Frame(body,width=px(134));rail.pack(side='left',fill='y',padx=(0,16));rail.pack_propagate(False)
+    right=ttk.Frame(body,width=px(330));right.pack(side='right',fill='y',padx=(20,0));right.pack_propagate(False)
     left=ttk.Frame(body);left.pack(side='left',fill='both',expand=True)
-    preview=tk.Label(left,bg='#060a0c',fg='#b8c9c1',text='Waiting for your phone…',font=('Segoe UI',15));preview.pack(fill='both',expand=True)
-    stream_status=ttk.Label(left,text='Waiting for camera');stream_status.pack(anchor='w',pady=(12,6))
-    effect_status=ttk.Label(left,text='',wraplength=px(680));effect_status.pack(anchor='w',pady=(0,12))
+    preview=tk.Label(left,bg=palette['preview'],fg=palette['muted'],text='Connect your phone with USB\n\nWake phone & start camera',font=('Segoe UI',14));preview.pack(fill='both',expand=True)
+    output_badge=tk.Label(preview,text=f'{fx.output_size[1]}p  ·  30 fps',bg='#17212d',fg='white',font=('Segoe UI',11,'bold'),padx=12,pady=7)
+    output_badge.place(relx=1,x=-12,y=12,anchor='ne')
+    preview_info=ttk.Frame(left,padding=(12,12),style='Panel.TFrame');preview_info.pack(fill='x',pady=(12,0))
+    stream_status=ttk.Label(preview_info,text='Waiting for camera',style='Status.TLabel');stream_status.pack(anchor='w')
+    effect_status=ttk.Label(preview_info,text='',style='Status.TLabel');effect_status.pack(anchor='w',pady=(6,0))
+    preview_info.bind('<Configure>',lambda e:effect_status.configure(wraplength=max(100,e.width-px(24))))
     notebook=ttk.Notebook(right);notebook.pack(fill='both',expand=True)
     tabs={}
-    for name in ['Crop','Angle','Adjust','Background','Connect']:
-        tabs[name]=ttk.Frame(notebook,padding=14);notebook.add(tabs[name],text=name)
+    canvases=[];nav_buttons={}
+    def select_panel(name):
+        notebook.select(list(tabs).index(name))
+        for key,button in nav_buttons.items():
+            button.configure(style='Selected.Nav.TButton' if key==name else 'Nav.TButton')
+    for name,label in [('Crop','Frame'),('Angle','Perspective'),('Adjust','Adjust'),('Background','Background'),('Connect','Connect')]:
+        page=ttk.Frame(notebook);notebook.add(page,text=label)
+        canvas=tk.Canvas(page,highlightthickness=0,bg=palette['bg'],width=px(300))
+        scroll=ttk.Scrollbar(page,orient='vertical',command=canvas.yview)
+        canvas.configure(yscrollcommand=scroll.set);scroll.pack(side='right',fill='y');canvas.pack(side='left',fill='both',expand=True)
+        content=ttk.Frame(canvas,padding=(8,10,14,16));item=canvas.create_window(0,0,anchor='nw',window=content)
+        content.bind('<Configure>',lambda e,c=canvas:c.configure(scrollregion=c.bbox('all')))
+        canvas.bind('<Configure>',lambda e,c=canvas,i=item:c.itemconfigure(i,width=e.width))
+        tabs[name]=content;canvases.append(canvas)
+        button=ttk.Button(rail,text=label,style='Nav.TButton',command=lambda n=name:select_panel(n))
+        button.pack(fill='x',pady=3);nav_buttons[name]=button
+    select_panel('Crop')
+    def theme_changed():
+        nonlocal palette
+        palette=apply_theme(style,window,theme.get())
+        preview.configure(bg=palette['preview'],fg=palette['muted'])
+        for canvas in canvases:canvas.configure(bg=palette['bg'])
+        try:save_theme(fx.storage,theme.get())
+        except OSError as error:messagebox.showerror('Save appearance',str(error))
+    for value,label in [('light','Light'),('dark','Dark')]:
+        ttk.Radiobutton(theme_bar,text=label,variable=theme,value=value,command=theme_changed).pack(side='left')
     settings,_=fx.snapshot();variables={};pending=[None]
     def save():
         pending[0]=None
@@ -51,10 +87,29 @@ def show(bridge,port,ips,usb,root,adb_command):
             val.configure(text=f'{float(value):.2f}');changed(key,float(value))
         ttk.Scale(tab,from_=low,to=high,variable=var,command=slide).pack(fill='x',pady=(3,1))
     crop=tabs['Crop']
-    ttk.Label(crop,text='Frame your shot',font=('Segoe UI',13,'bold')).pack(anchor='w')
+    ttk.Label(crop,text='Frame',font=('Segoe UI',17,'bold')).pack(anchor='w',pady=(0,12))
+    from video_quality import PROFILES, load_quality, save_quality
+    ttk.Label(crop,text='Video quality').pack(anchor='w')
+    quality=tk.StringVar(value=load_quality(fx.storage))
+    quality_box=ttk.Combobox(crop,textvariable=quality,values=list(PROFILES),state='readonly')
+    quality_box.pack(fill='x',pady=(6,4))
+    quality_note=ttk.Label(crop,text='30 fps target · applies while CamTether stays open',style='Help.TLabel',wraplength=px(285))
+    quality_note.pack(fill='x',pady=(0,8))
+    def select_quality(event=None):
+        try:
+            bridge.set_quality(quality.get())
+            quality_note.configure(text=f'Applying {quality.get()}... A short video pause is normal. Some meeting apps retain their negotiated size until you reselect the camera.')
+        except OSError as error:messagebox.showerror('Save video quality',str(error))
+    quality_box.bind('<<ComboboxSelected>>',select_quality)
+    ttk.Button(crop,text='Performance & optimization',command=lambda:messagebox.showinfo('Performance & optimization',
+        'GPU shows the busiest engine across this Device, including other apps. CamTether currently processes effects on the CPU.\n\n'
+        'For 30 fps, processing should stay below 33 ms per frame. Close unused GPU-heavy apps; avoid applying background effects in both CamTether and your meeting app. Hide the preview to save display work without changing output quality.\n\n'
+        '1080p needs a phone that supplies enough detail and a Device that sustains 30 fps. Output resolution does not guarantee source detail. If lag remains, choose 720p or 540p yourself; CamTether never automatically reduces quality.')).pack(fill='x',pady=(0,12))
+    ttk.Label(crop,text='Higher resolution uses more CPU, memory and USB bandwidth. Your meeting app may also use more GPU.',style='Help.TLabel',wraplength=px(285)).pack(fill='x',pady=(0,12))
     framing=tk.StringVar(value=settings['framing']);variables['framing']=framing
-    frame_box=ttk.Combobox(crop,textvariable=framing,values=['Fit entire image','Fill frame'],state='readonly')
-    frame_box.pack(fill='x',pady=8);frame_box.bind('<<ComboboxSelected>>',lambda e:changed('framing',framing.get()))
+    frame_modes=ttk.Frame(crop);frame_modes.pack(fill='x',pady=8)
+    for value,label in [('Fit entire image','Fit'),('Fill frame','Fill')]:
+        ttk.Radiobutton(frame_modes,text=label,variable=framing,value=value,command=lambda:changed('framing',framing.get())).pack(side='left',expand=True,fill='x')
     for key,title,lo,hi in [('zoom','Zoom',1,3),('pan_x','Horizontal position',-1,1),('pan_y','Vertical position',-1,1),('left','Crop left (%)',0,40),('right','Crop right (%)',0,40),('top','Crop top (%)',0,40),('bottom','Crop bottom (%)',0,40)]:slider(crop,key,title,lo,hi)
     ttk.Label(crop,text='Fill frame removes bars by cropping. Position shifts that crop. A sideways phone gives the widest, sharpest shot.',wraplength=px(300)).pack(anchor='w',pady=10)
     angle=tabs['Angle']
@@ -72,6 +127,14 @@ def show(bridge,port,ips,usb,root,adb_command):
     ttk.Button(angle,text='Reset perspective only',command=reset_angle).pack(fill='x')
     ttk.Label(angle,text='Auto checks long room lines on both sides, then locks a mild correction. If uncertain, it leaves the image unchanged. Moving a manual slider turns auto off. Keystone still changes proportions; it cannot recreate eye level.',wraplength=px(290)).pack(anchor='w',pady=15)
     adjust=tabs['Adjust']
+    ttk.Label(adjust,text='Anti-flicker lighting').pack(anchor='w')
+    lighting=tk.StringVar(value=bridge.lighting)
+    lighting_box=ttk.Combobox(adjust,textvariable=lighting,values=['Auto','50 Hz','60 Hz'],state='readonly')
+    lighting_box.pack(fill='x',pady=(6,6))
+    lighting_box.bind('<<ComboboxSelected>>',lambda event:bridge.set_lighting(lighting.get()))
+    lighting_status=ttk.Label(adjust,text='Connect the phone to check support.',style='Help.TLabel',wraplength=px(285))
+    lighting_status.pack(fill='x',pady=(0,8))
+    ttk.Label(adjust,text='50/60 Hz uses a matching manual exposure when supported. It may change brightness. Some LED/PWM lights can still flicker. Auto restores automatic exposure.',style='Help.TLabel',wraplength=px(285)).pack(fill='x',pady=(0,12))
     mirror=tk.BooleanVar(value=settings['mirror']);variables['mirror']=mirror
     ttk.Checkbutton(adjust,text='Mirror video',variable=mirror,command=lambda:changed('mirror',mirror.get())).pack(anchor='w',pady=8)
     ttk.Label(adjust,text='Rotate clockwise').pack(anchor='w',pady=(12,6))
@@ -108,7 +171,7 @@ def show(bridge,port,ips,usb,root,adb_command):
     refresh_thumb()
     connect=tabs['Connect'];address=tk.StringVar(value=ips[0]);link=tk.StringVar()
     ttk.Label(connect,text='Direct USB' if usb else 'Network connection',font=('Segoe UI',13,'bold')).pack(anchor='w')
-    ttk.Label(connect,text='Keep USB debugging enabled and the cable connected. Tap Start camera on the phone. Keep the page visible.' if usb else 'Select the connected adapter and scan the pairing QR code.',wraplength=px(295)).pack(anchor='w',pady=12)
+    ttk.Label(connect,text='Keep USB debugging enabled and the cable connected. Use Start phone camera above. Unlock or approve camera access on the phone only if Android asks. Keep the camera page visible.' if usb else 'Select the connected adapter and scan the pairing QR code.',wraplength=px(295)).pack(anchor='w',pady=12)
     combo=ttk.Combobox(connect,textvariable=address,values=ips,state='readonly');combo.pack(fill='x')
     qr=ttk.Label(connect);qr.pack(pady=12)
     ttk.Entry(connect,textvariable=link,state='readonly').pack(fill='x')
@@ -118,8 +181,8 @@ def show(bridge,port,ips,usb,root,adb_command):
         qr.picture=ImageTk.PhotoImage(qrcode.make(link.get()).convert('RGB').resize((230,230),Image.Resampling.NEAREST));qr.configure(image=qr.picture)
     pairing();combo.bind('<<ComboboxSelected>>',pairing)
     phone_events=queue.SimpleQueue()
-    launch_status=ttk.Label(header,text='',foreground='#9be9b5')
-    launch_status.pack(side='right',padx=10)
+    launch_status=ttk.Label(connect,text='',style='Help.TLabel',wraplength=px(285))
+    launch_status.pack(fill='x',pady=(12,0))
     def wake_start():
         wake_button.configure(state='disabled')
         launch_status.configure(text='Waking phone…')
@@ -132,7 +195,7 @@ def show(bridge,port,ips,usb,root,adb_command):
             except Exception as error:phone_events.put((False,str(error)))
         threading.Thread(target=work,daemon=True).start()
     if usb:
-        wake_button=ttk.Button(header,text='Wake phone & start camera',command=wake_start)
+        wake_button=ttk.Button(header,text='Start phone camera',command=wake_start,style='Primary.TButton')
         wake_button.pack(side='right')
     def open_phone():
         try:
@@ -144,12 +207,35 @@ def show(bridge,port,ips,usb,root,adb_command):
     ttk.Button(connect,text='Copy pairing link',command=copy).pack(fill='x',pady=5)
     def disconnect():bridge.rotate_pairing();pairing()
     ttk.Button(connect,text='Disconnect / new pairing',command=disconnect).pack(fill='x',pady=5)
-    footer=ttk.Frame(window,padding=(20,14));footer.pack(fill='x')
-    driver=ttk.Label(footer,text='',wraplength=px(760));driver.pack(side='left')
-    ttk.Button(footer,text='Set up webcam driver',command=lambda:__import__('webbrowser').open('https://obsproject.com/download')).pack(side='right')
-    ttk.Label(window,text='Edits and background are remembered automatically. Video stays on this laptop.',foreground='#93a79e').pack(pady=(0,10))
+    footer=ttk.Frame(window,padding=(22,14),style='Footer.TFrame');footer.pack(fill='x',pady=(16,0))
+    footer.columnconfigure(0,weight=1)
+    footer.columnconfigure(1,weight=1)
+    driver=ttk.Label(footer,text='',style='Footer.TLabel',wraplength=px(500));driver.grid(row=0,column=0,sticky='w')
+    gpu_label=ttk.Label(footer,text='GPU - measuring...',style='Footer.TLabel');gpu_label.grid(row=0,column=1,sticky='e')
+    ttk.Label(footer,text='Settings saved automatically',style='Footer.TLabel').grid(row=1,column=0,sticky='w',pady=(8,0))
+    ttk.Label(footer,text='Video stays on this Device',style='Footer.TLabel').grid(row=1,column=1,sticky='e',pady=(8,0))
+    def remove_camera():
+        if messagebox.askokcancel('Remove webcam components', 'Close meeting apps and browsers first. CamTether will close and remove its own webcam files. You can then uninstall CamTether in Windows Settings. Existing OBS installations are preserved.'):
+            bridge.remove_camera_files=True
+            close()
+    ttk.Button(connect,text='Remove webcam components',command=remove_camera).pack(fill='x',pady=(20,5))
+    ttk.Label(connect,text='Closing the window keeps CamTether running in the system tray. Right-click its tray icon to open or exit.',style='Help.TLabel',wraplength=px(285)).pack(fill='x',pady=(12,0))
+    tray=None
+    try:
+        from system_tray import SystemTray
+        tray=SystemTray(window)
+    except Exception as error:
+        launch_status.configure(text='System tray unavailable: '+str(error))
+    from gpu_usage import GpuMonitor
+    gpu=GpuMonitor(bridge.closed)
     previous=[None];ticks=[0];last_preview=[0.]
     def tick():
+        if tray:
+            while not tray.events.empty():
+                action=tray.events.get()
+                if action=='exit':
+                    close();return
+                window.deiconify();window.lift();window.focus_force()
         while not phone_events.empty():
             ok,message=phone_events.get()
             wake_button.configure(state='normal')
@@ -167,13 +253,28 @@ def show(bridge,port,ips,usb,root,adb_command):
             previous[0]=marker
         ticks[0]+=1
         if ticks[0]%10==0:
-            stream_status.configure(text=(f'LIVE · {fx.fps:.0f} processed fps · {bridge.count} frames received' if frame is not None else 'Waiting · tap Start camera on your phone'))
-            effect_status.configure(text=fx.status)
+            stream_status.configure(text=(f'LIVE  ·  {fx.fps:.0f} fps' if frame is not None else 'Waiting for phone camera'))
+            effect_status.configure(text=fx.status.replace('laptop','Device'))
+            gpu_label.configure(text=gpu.label)
+            active=bridge.active_output_size
+            output_badge.configure(text=f'{active[1] if active else fx.output_size[1]}p  ·  30 fps'+('  ·  applying' if active and active!=fx.output_size else ''))
+            info=bridge.camera_info
+            lighting_status.configure(text=info.get('lighting_status','Connect the phone to check support.'))
+            if frame is not None:stream_status.configure(text=f'LIVE  ·  {fx.fps:.0f} fps  ·  {fx.processing_ms:.1f} ms processing')
             auto_status.configure(text=fx.auto_status)
-            driver.configure(text=bridge.driver_status,foreground='#9be9b5' if bridge.driver_ready else '#ffc58a')
-        window.after(33,tick)
+            driver.configure(text=bridge.driver_status,foreground=palette['accent'] if bridge.driver_ready else palette['muted'])
+        window.after(33 if window.winfo_viewable() else 250,tick)
     def close():
-        save();bridge.closed.set();window.destroy()
-    window.protocol('WM_DELETE_WINDOW',close);tick()
-    if usb:window.after(500,open_phone)
+        save();bridge.closed.set()
+        if tray:tray.close()
+        window.destroy()
+    def hide_to_tray():
+        save()
+        if tray and tray.visible:
+            window.withdraw()
+        elif messagebox.askokcancel('Exit CamTether', 'The system tray is unavailable. Exit CamTether and stop the camera?'):
+            close()
+    ttk.Button(connect,text='Exit CamTether',command=close).pack(fill='x',pady=(12,5))
+    window.protocol('WM_DELETE_WINDOW',hide_to_tray);tick()
+    if usb:launch_status.configure(text='Use Start phone camera above. First use may require permission on the phone.')
     window.mainloop()

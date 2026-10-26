@@ -23,12 +23,23 @@ https://github.com/fanindras/camtether. The release source archive accompanies
  the package. The interpreted adapter source is also inside the package.
 The package build does not change or obscure these source files.
 
-OBS Studio is installed separately. CamTether loads swscale-9.dll and avutil-60.dll
-only from the registered OBS installation. Tested with OBS 32.2.2; its FFmpeg
-libraries report GPL version 3 or later. These libraries and the OBS virtual
-camera driver are not redistributed by CamTether. Their upstream source is
-https://github.com/obsproject/obs-studio and https://github.com/obsproject/obs-deps
-and https://ffmpeg.org/download.html. No OBS trademark endorsement is implied.
+Version 1.1.3 bundles only OBS 32.2.2's unchanged, upstream-signed x86/x64
+virtual-camera filter DLLs and placeholder, and FFmpeg 8.1.2's swscale-9.dll and
+avutil-60.dll. There is no OBS Studio application, UI, plugin collection, recorder
+or separate OBS process. The FFmpeg libraries report GPL version 3 or later.
+Exact commits and binary hashes are in native/provenance.json.
+
+The unmodified signed filter DLLs are copied to a hash-versioned per-user
+CamTetherCamera directory for loading by other desktop apps. WindowsApps blocks
+this loading from an ordinary MSIX install directory. Existing valid OBS camera
+registrations are reused without modification; otherwise CamTether creates its
+own marked per-user registration. No new unsigned camera proxy is distributed.
+
+Corresponding source archive: CamTether-1.1.3-third-party-source.zip, supplied
+alongside the release candidate. It includes OBS source with libdshowcapture,
+FFmpeg source and the matching obs-deps build scripts/patches. No source-access fee
+or signing secret is needed to build or run modified source. OBS and FFmpeg are
+independent upstream projects; no endorsement is implied.
 
 ## Other bundled components
 
@@ -40,7 +51,7 @@ Exact wheel versions and hashes are in submission/dependency-provenance.json.
 | Python 3.13 runtime | PSF; runtime/LICENSE.txt; https://www.python.org/downloads/source/ |
 | Tcl/Tk | BSD-style notices in runtime/tcl; https://www.tcl.tk/software/tcltk/ |
 | NumPy 2.5.4 | BSD and bundled notices; vendor/numpy-2.5.4.dist-info/licenses; https://pypi.org/project/numpy/2.5.4/#files |
-| Pillow 12.3.0 | HPND and bundled codec notices; vendor/pillow-12.3.0.dist-info/licenses; https://pypi.org/project/pillow/12.3.0/#files |
+| Pillow 13.0.0 | HPND and bundled codec notices; vendor/pillow-13.0.0.dist-info/licenses; https://pypi.org/project/pillow/13.0.0/#files |
 | ONNX Runtime 1.31.0 | MIT and ThirdPartyNotices.txt; https://github.com/microsoft/onnxruntime/tree/v1.31.0 |
 | qrcode 8.2 | BSD; https://pypi.org/project/qrcode/8.2/#files |
 | colorama 0.4.6 | BSD; https://pypi.org/project/colorama/0.4.6/#files |
@@ -68,3 +79,4 @@ cryptography/cffi/pycparser stack. This avoids the earlier GPLv2/Apache-2.0
 combination. The adapter's explicit GPLv3-or-later grant accommodates the
 remaining Apache-2.0 components. This records the engineering license audit;
 Microsoft still decides Store certification and restricted-capability approval.
+

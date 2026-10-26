@@ -28,6 +28,20 @@ class Bridge:
         self.driver_ready = False
         self.closed = threading.Event()
         self.effects = None
+        self.active_output_size = None
+        self.lighting = 'Auto'
+        self.camera_info = {}
+
+    def set_quality(self, profile):
+        from video_quality import PROFILES, save_quality
+        if profile not in PROFILES:raise ValueError('Unsupported video quality')
+        save_quality(self.effects.storage, profile)
+        self.effects.set_output_size(PROFILES[profile])
+
+    def set_lighting(self, mode):
+        if mode not in ('Auto','50 Hz','60 Hz'):raise ValueError('Invalid lighting frequency')
+        with self.lock:self.lighting=mode
+
 
     def accept(self, data, token):
         with self.lock:
@@ -76,6 +90,7 @@ class Bridge:
         with self.lock:
             if epoch != self.epoch or self.frame is None or time.monotonic()-received_at >= 2:
                 return False
+            if frame.shape[:2] != self.effects.output_size[::-1]:return False
             self.effects.output = frame
             self.effects.output_epoch = epoch
             self.effects.output_received_at = received_at
@@ -91,16 +106,30 @@ class Bridge:
             return self.effects.output
 
     def virtual_camera(self):
-        blank = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+        import camera_registration
         while not self.closed.is_set():
+            width, height = self.effects.output_size if self.effects else (WIDTH, HEIGHT)
+            blank = np.zeros((height, width, 3), dtype=np.uint8)
             try:
-                with Camera(WIDTH, HEIGHT, FPS) as cam:
+                with Camera(width, height, FPS) as cam:
+                    camera_registration.check()
+                    next_check = time.monotonic()+1
+                    self.active_output_size = (width, height)
                     self.driver_ready = True
-                    self.driver_status = 'Ready · select OBS Virtual Camera in your meeting app'
+                    self.driver_status = 'Ready · select CamTether in your meeting app'
                     while not self.closed.is_set():
+                        if self.effects and self.effects.output_size != (width,height):
+                            self.driver_ready=False
+                            self.driver_status='Applying video quality...'
+                            break
+                        if time.monotonic() >= next_check:
+                            camera_registration.check()
+                            next_check = time.monotonic()+1
                         frame = self.current()
-                        cam.send(frame if frame is not None else blank)
+                        cam.send(frame if frame is not None and frame.shape == blank.shape else blank)
                         cam.sleep_until_next_frame()
+                # Readers release the old shared queue after observing STOPPING.
+                self.closed.wait(.1)
             except Exception as error:
                 self.driver_ready = False
                 self.driver_status = 'Webcam output unavailable: '+str(error)
@@ -143,7 +172,7 @@ def make_server(bridge, port, ips, usb=True):
             if urlsplit(self.path).path == '/':
                 self.reply(200, html, 'text/html; charset=utf-8')
             elif self.path == '/status' and self.authorized():
-                data = {'frames': bridge.count, 'live': bridge.current() is not None,
+                data = {'lighting': bridge.lighting, 'output_size': bridge.effects.output_size if bridge.effects else [WIDTH, HEIGHT], 'frames': bridge.count, 'live': bridge.current() is not None,
                         'virtual_camera': bridge.driver_ready,
                         'processed_fps': round(bridge.effects.fps,1) if bridge.effects else None,
                         'editor_status': bridge.effects.status if bridge.effects else None,
@@ -159,6 +188,23 @@ def make_server(bridge, port, ips, usb=True):
             origin = self.headers.get('Origin')
             if origin and origin != 'http://' + self.headers.get('Host', ''):
                 self.reply(403); return
+            if self.path == '/camera-info':
+                try:
+                    size=int(self.headers.get('Content-Length','0'))
+                    if not 0 < size <= 4096 or self.headers.get('Content-Type') != 'application/json':
+                        self.reply(400);return
+                    info=json.loads(self.rfile.read(size))
+                    if not isinstance(info,dict):raise ValueError('Invalid camera status')
+                    clean={}
+                    for key in ('width','height'):
+                        value=info.get(key,0)
+                        if not isinstance(value,int) or isinstance(value,bool) or not 0<=value<=8192:raise ValueError('Invalid size')
+                        clean[key]=value
+                    clean['lighting_status']=str(info.get('lighting_status',''))[:240]
+                    with bridge.lock:bridge.camera_info=clean
+                    self.reply(204)
+                except (ValueError,TypeError,OSError):self.reply(400)
+                return
             if self.path == '/stop':
                 bridge.stop(); self.reply(204); return
             if self.path != '/frame':
@@ -189,7 +235,8 @@ def make_server(bridge, port, ips, usb=True):
 
 
 def adb_command(*args):
-    adb = ROOT/'android-tools'/'platform-tools'/'adb.exe'
+    from usb_runtime import adb_path
+    adb = adb_path(ROOT)
     if not adb.exists():
         raise RuntimeError('Android USB tools are missing from the app folder.')
     result = subprocess.run([str(adb), '-d', *args], capture_output=True, text=True,
@@ -213,7 +260,8 @@ def main():
     args = parser.parse_args()
     ips, bridge = ['127.0.0.1'], Bridge()
     from effects import Effects
-    bridge.effects = Effects(ROOT, storage=user_data_dir())
+    from video_quality import load_quality, PROFILES
+    bridge.effects = Effects(ROOT, output_size=PROFILES[load_quality(user_data_dir())], storage=user_data_dir())
     threading.Thread(target=bridge.effects.run,args=(bridge,),daemon=True).start()
     server = make_server(bridge, args.port, ips, usb=args.usb)
     if args.usb:
@@ -225,21 +273,36 @@ def main():
                 raise
             bridge.driver_status = 'Connect your phone, then click Wake phone & start camera.'
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    threading.Thread(target=bridge.virtual_camera, daemon=True).start()
-    if args.state_file:
-        args.state_file.write_text(json.dumps({'port':server.server_port, 'token':bridge.token, 'ips':ips, 'usb':args.usb}))
+    import camera_registration
     try:
+        camera_registration.register()
+        threading.Thread(target=bridge.virtual_camera, daemon=True).start()
+        if args.state_file:
+            args.state_file.write_text(json.dumps({'port':server.server_port, 'token':bridge.token, 'ips':ips, 'usb':args.usb}))
         if args.headless:
             while not bridge.closed.wait(1): pass
         else:
             show_window(bridge, server.server_port, ips, usb=args.usb)
     finally:
         bridge.closed.set(); bridge.stop(); server.shutdown(); server.server_close()
-        if args.usb:
-            try:
-                adb_command('reverse', '--remove', f'tcp:{server.server_port}')
-            except Exception:
-                pass
+        try:
+            camera_registration.unregister()
+        finally:
+            if args.usb:
+                try:
+                    adb_command('reverse', '--remove', f'tcp:{server.server_port}')
+                except Exception:
+                    pass
+        if getattr(bridge, 'remove_camera_files', False):
+            import usb_runtime
+            errors = []
+            for remove in (camera_registration.remove_files, usb_runtime.remove_files):
+                try:
+                    remove()
+                except Exception as error:
+                    errors.append(error)
+            if errors:
+                raise ExceptionGroup('Component cleanup needs attention', errors)
 
 if __name__ == '__main__':
     try:

@@ -29,7 +29,7 @@ class EffectsTests(unittest.TestCase):
         self.fx.set(background='Remove / plain color',color='#0000ff');s,rev=self.fx.snapshot()
         out=self.fx.process(frame,s,rev);self.assertTrue(np.all(out[:,:]==[0,0,255]))
         self.fx.mask=Image.new('L',(200,100),0);self.fx.mask.paste(255,(0,0,100,100))
-        self.fx.mask_key=(frame.shape[:2],)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(0,)
+        self.fx.mask_key=(frame.shape[:2],self.fx.output_size)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(0,)
         self.fx.mask_time=time.monotonic();out=self.fx.process(frame,s,rev)
         self.assertTrue(np.all(out[50,30]==[255,255,255]));self.assertTrue(np.all(out[50,170]==[0,0,255]))
     def test_cached_background_and_mask_invalidate(self):
@@ -37,7 +37,7 @@ class EffectsTests(unittest.TestCase):
         self.fx.background_image=Image.new('RGB',(400,300),'blue')
         self.fx.set(background='Image');s,rev=self.fx.snapshot()
         self.fx.mask=Image.new('L',(192,192),0)
-        self.fx.mask_key=(frame.shape[:2],)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(0,)
+        self.fx.mask_key=(frame.shape[:2],self.fx.output_size)+tuple(s[k] for k in ('zoom','pan_x','pan_y','left','right','top','bottom','rotation','mirror','framing','keystone_v','keystone_h','level'))+(0,)
         self.fx.mask_time=time.monotonic()
         first=self.fx.process(frame,s,rev)
         cached_bg=self.fx._background_cache;cached_mask=self.fx._mask_cache

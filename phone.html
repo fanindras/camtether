@@ -5,23 +5,23 @@
 :root{color-scheme:dark;font:16px system-ui;background:#10171b;color:#eaf1ed}body{max-width:600px;margin:0 auto;padding:24px}h1{font-size:34px;margin-bottom:8px}p{color:#b8c9c1;line-height:1.55}video{width:100%;max-height:52vh;background:#060a0c;border-radius:16px;object-fit:contain}button,select{font:inherit;border:0;border-radius:10px;padding:14px;margin:6px 6px 6px 0}button{background:#9be9b5;color:#10241a;font-weight:650}button:disabled{opacity:.45}select,#stop{background:#29383d;color:white}#status{padding:16px 0;min-height:48px}small{display:block;color:#93a79e;line-height:1.6}.tag{font:12px monospace;letter-spacing:2px;color:#9be9b5}
 </style>
 <div class="tag">CAMTETHER / LOCAL CONNECTION</div><h1>Your phone. Your webcam.</h1>
-<p>Keep this page open and the screen unlocked. Video goes to your laptop on the local network.</p>
+<p>Keep this page open and the screen unlocked. Video goes to your Device on the local network.</p>
 <video id="preview" autoplay muted playsinline></video>
-<div><select id="facing" aria-label="Camera"><option value="environment">Rear camera</option><option value="user">Front camera</option></select><select id="quality" aria-label="Video quality"><option value="fast">Lower latency · 540p</option><option value="sharp" selected>Sharper · 720p</option></select></div>
+<div><select id="facing" aria-label="Camera"><option value="user" selected>Front camera</option><option value="environment">Rear camera</option></select><span id="quality">Quality set in CamTether</span></div>
 <button id="start">Start camera</button><button id="stop" disabled>Stop</button>
 <div id="status" role="status" aria-live="polite">Ready to connect.</div>
-<small>In Zoom, Teams, or Meet, select <b>OBS Virtual Camera</b>. Use your laptop microphone. No video is recorded by CamTether.</small>
+<small>In Zoom, Teams, or Meet, select <b>OBS Virtual Camera</b>. Use your Device microphone. No video is recorded by CamTether.</small>
 <script>
 const token=new URLSearchParams(location.hash.slice(1)).get('token');
 const wired=location.hostname==='127.0.0.1';
-if(wired)document.querySelector('p').textContent='Keep this page open and the screen unlocked. Video travels to your laptop through the USB cable.';
+if(wired)document.querySelector('p').textContent='Keep this page open and the screen unlocked. Video travels to your Device through the USB cable.';
 const video=document.querySelector('video'), status=document.querySelector('#status'), start=document.querySelector('#start'), stop=document.querySelector('#stop'), facing=document.querySelector('#facing');
 const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d',{alpha:false});
 const quality=document.querySelector('#quality');
 try{
- const saved=JSON.parse(localStorage.getItem('phonecam-camera')||'{}');
+ const saved=JSON.parse(localStorage.getItem('camtether-camera-v2')||'{}');
  if(['user','environment'].includes(saved.facing))facing.value=saved.facing;
- if(['fast','sharp'].includes(saved.quality))quality.value=saved.quality;
+
 }catch{}
 let captureWidth=960,captureHeight=540,jpegQuality=.65;
 let stream=null,running=false,generation=0,wake=null,pendingUpload=null;
@@ -33,7 +33,7 @@ async function stopCamera(message='Camera stopped.'){
  stop.disabled=true;tell('Stopping camera…');
  try{if(pendingUpload)await pendingUpload}catch{}
  try{await fetch('/stop',{method:'POST',headers,signal:AbortSignal.timeout(1500)})}catch{}
- start.disabled=false;facing.disabled=false;quality.disabled=false;tell(message);
+ start.disabled=false;facing.disabled=false;tell(message);
 }
 // One encoded frame waiting, one upload in flight: never accumulate video latency.
 async function captureFrames(id,slot){
@@ -68,8 +68,8 @@ async function pump(id){
    pendingUpload=fetch('/frame',{method:'POST',headers:{...headers,'Content-Type':'image/jpeg'},body:blob,signal:AbortSignal.timeout(4000)});
    const response=await pendingUpload;
    if(!running||id!==generation)return;
-   if(response.status===403){await stopCamera('Pairing expired. Scan the QR code on your laptop again.');return}
-   if(!response.ok)throw Error('Laptop returned '+response.status);
+   if(response.status===403){await stopCamera('Pairing expired. Scan the QR code on your Device again.');return}
+   if(!response.ok)throw Error('Device returned '+response.status);
    failures=0;count++;
    const now=performance.now();
    if(count===1||now-reportTime>=1000){
@@ -80,34 +80,98 @@ async function pump(id){
   }catch(e){
    if(!running||id!==generation)return;
    failures++;tell(wired?'USB connection interrupted. Retrying… Check the cable.':'Connection interrupted. Retrying… Keep both devices on the same network.');
-   if(failures>=8){await stopCamera('Connection lost. Check the laptop app and tap Start camera to retry.');return}
+   if(failures>=8){await stopCamera('Connection lost. Check the Device app and tap Start camera to retry.');return}
    await new Promise(r=>setTimeout(r,600));
   }
 
  }
 }
+// Shutter timing is used only when exposed by the actual camera track.
+async function applyLighting(track,mode){
+ const caps=track.getCapabilities?.()||{};
+ const automatic=(caps.exposureMode||[]).includes('continuous')?'continuous':null;
+ async function restoreAutomatic(){
+  if(!automatic)return 'Automatic exposure cannot be confirmed; previous exposure settings may remain active.';
+  try{
+   await track.applyConstraints({...track.getConstraints(),advanced:[{exposureMode:automatic}]});
+   if(track.getSettings().exposureMode===automatic)return 'Automatic exposure active.';
+  }catch(error){}
+  return 'Automatic exposure could not be confirmed; previous exposure settings may remain active.';
+ }
+ if(!automatic)return 'Anti-flicker unavailable: this camera/browser does not expose automatic/manual exposure controls. Previous exposure settings are unchanged.';
+ if(mode==='Auto'){
+  return restoreAutomatic();
+ }
+ const range=caps.exposureTime;
+ const wanted=mode==='50 Hz'?100:250/3; // W3C units: 100 microseconds.
+ if(!(caps.exposureMode||[]).includes('manual')||!range||!Number.isFinite(range.min)||!Number.isFinite(range.max))return 'Anti-flicker unavailable: manual exposure is not exposed by this camera/browser. '+await restoreAutomatic();
+ const step=range.step||0;
+ const target=step>0?range.min+Math.round((wanted-range.min)/step)*step:wanted;
+ if(target<range.min||target>range.max||Math.abs(target-wanted)>wanted*.01)return 'Anti-flicker unavailable: the camera cannot set the required shutter duration. '+await restoreAutomatic();
+ try{
+  await track.applyConstraints({...track.getConstraints(),advanced:[{exposureMode:'manual',exposureTime:target}]});
+  const actual=track.getSettings();
+  if(actual.exposureMode!=='manual'||!Number.isFinite(actual.exposureTime)||Math.abs(actual.exposureTime-wanted)>wanted*.01)throw Error('Exposure readback did not match');
+  return mode+' lighting: '+(actual.exposureTime/10).toFixed(2)+' ms shutter confirmed. Brightness may change.';
+ }catch(error){
+  return 'Anti-flicker could not be applied. '+await restoreAutomatic();
+ }
+}
+async function syncPhoneSettings(id){
+ let signature='',lightingStatus='Checking camera exposure support...';
+ while(running&&id===generation){
+  try{
+   const response=await fetch('/status',{headers,signal:AbortSignal.timeout(2000)});
+   if(!response.ok)throw Error('Control connection unavailable');
+   const config=await response.json();
+   if(!running||id!==generation)return;
+   const track=stream.getVideoTracks()[0], size=config.output_size;
+   if(!Array.isArray(size)||![[960,540],[1280,720],[1920,1080]].some(p=>p[0]===size[0]&&p[1]===size[1]))throw Error('Invalid resolution');
+   if(!['Auto','50 Hz','60 Hz'].includes(config.lighting))throw Error('Invalid lighting mode');
+   const next=JSON.stringify([size,config.lighting]);
+   if(next!==signature){
+    if(captureWidth!==size[0]||captureHeight!==size[1]){
+     await track.applyConstraints({...track.getConstraints(),width:{ideal:size[0]},height:{ideal:size[1]},frameRate:{ideal:30,max:30}});
+     if(!running||id!==generation)return;
+     [captureWidth,captureHeight]=size;
+     quality.textContent=captureHeight+'p · 30 fps target';
+    }
+    lightingStatus=await applyLighting(track,config.lighting);
+    signature=next;
+   }
+   if(!running||id!==generation)return;
+   const actual=track.getSettings();
+   await fetch('/camera-info',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({width:actual.width||0,height:actual.height||0,lighting_status:lightingStatus}),signal:AbortSignal.timeout(2000)});
+  }catch(error){if(running&&id===generation)tell('Camera controls: '+error.message+'. Video continues; retrying.');}
+  await new Promise(resolve=>setTimeout(resolve,1000));
+ }
+}
 async function startCamera(){
  if(running||start.disabled)return;
- start.disabled=true;facing.disabled=true;quality.disabled=true;tell('Waiting for camera permission…');
+ start.disabled=true;facing.disabled=true;tell('Waiting for camera permission…');
  try{
-  if(!token)throw Error('Scan the pairing QR code in the laptop app first.');
+  if(!token)throw Error('Scan the pairing QR code in the Device app first.');
   const check=await fetch('/status',{headers,signal:AbortSignal.timeout(4000)});
   if(!check.ok)throw Error('Pairing expired. Use Wake phone & start camera in the PC app.');
-  if(!isSecureContext||!navigator.mediaDevices)throw Error('Camera access needs HTTPS. Open the exact https:// address shown on your laptop in Chrome.');
-  try{localStorage.setItem('phonecam-camera',JSON.stringify({facing:facing.value,quality:quality.value}))}catch{}
-  captureWidth=quality.value==='fast'?960:1280;captureHeight=quality.value==='fast'?540:720;jpegQuality=quality.value==='fast'?.65:.78;
+  if(!isSecureContext||!navigator.mediaDevices)throw Error('Open the direct USB pairing link in Chrome. Camera access requires the localhost address shown in CamTether.');
+  try{localStorage.setItem('camtether-camera-v2',JSON.stringify({facing:facing.value}))}catch{}
+  const profile=await check.json();
+  const size=profile.output_size;
+  if(!Array.isArray(size)||![[960,540],[1280,720],[1920,1080]].some(p=>p[0]===size[0]&&p[1]===size[1]))throw Error('Unsupported output size. Restart CamTether.');
+  [captureWidth,captureHeight]=size;jpegQuality=.78;
+  quality.textContent=captureHeight+'p · 30 fps target';
   stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing.value},width:{ideal:captureWidth},height:{ideal:captureHeight},frameRate:{ideal:30,max:30}},audio:false});
   video.srcObject=stream;await video.play();running=true;stop.disabled=false;const id=++generation;
   try{wake=await navigator.wakeLock.request('screen')}catch{}
   stream.getVideoTracks()[0].onended=()=>{if(running)stopCamera('Camera access ended. Tap Start camera to retry.')};
-  pump(id);
+  pump(id);syncPhoneSettings(id);
  }catch(e){await stopCamera(e.name==='NotAllowedError'?'Camera permission was denied. Allow camera access in Chrome site settings, then try again.':e.message)}
 }
 start.onclick=startCamera;
 stop.onclick=()=>stopCamera();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stopCamera('Camera paused because this page was hidden. Tap Start camera to resume.')});
 window.addEventListener('pagehide',()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
-if(!token){start.disabled=true;tell('Scan the QR code shown in the CamTether laptop app to pair.')}
+if(!token){start.disabled=true;tell('Scan the QR code shown in the CamTether Device app to pair.')}
 // Only an explicit PC launch link requests auto-start; ordinary page opens do not.
 let pcStartPending=token&&new URLSearchParams(location.search).get('start')==='1';
 function startFromPC(){

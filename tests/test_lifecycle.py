@@ -12,7 +12,7 @@ def jpeg(color):
 class LifecycleTests(unittest.TestCase):
     def test_stop_restart_rejects_inflight_old_frame(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
-            bridge=Bridge();fx=Effects(tmp);bridge.effects=fx
+            bridge=Bridge();fx=Effects(tmp,output_size=(32,32));bridge.effects=fx
             entered=threading.Event();release=threading.Event();second=threading.Event();release_second=threading.Event()
             calls=[]
             def process(frame,settings,revision):
@@ -39,7 +39,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_stale_processed_output_is_not_repeated_forever(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
-            bridge=Bridge();bridge.effects=Effects(tmp)
+            bridge=Bridge();bridge.effects=Effects(tmp,output_size=(32,32))
             bridge.accept(jpeg('red'),bridge.token)
             frame,_,epoch,received=bridge.raw_snapshot()
             self.assertTrue(bridge.publish_processed(frame,epoch,received))
