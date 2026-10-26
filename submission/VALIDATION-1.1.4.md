@@ -70,3 +70,9 @@ Partner Center rejected revision 1.1.4.1 because Store packages require the four
 version component to be zero. The same UI fix is repackaged as **1.1.5.0**.
 SHA-256: 19d14db5d995432b37c06e27d49749717bdafc85c08234910addcdfd02644fe8.
 The 1.1.4.1 WACK run completed with overall PASS; 1.1.5.0 is being rechecked.
+
+Final 1.1.5.0 WACK result: overall PASS, PARTIAL_RUN FALSE, exit code 0.
+The same optional blocked-executable finding remains disclosed for review.
+Partner Center lists 1.1.5.0 with only restricted-capability approval warnings;
+its upload progress remains stuck and Save is disabled. Refresh awaits user
+approval because it may discard unsaved removal of superseded packages.
